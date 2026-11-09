@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { ActionReview } from "./action-review";
+import { ActionHistory } from "./action-history";
 import { Composer } from "./composer";
 import { MessageList } from "./message-list";
 import { readApiError, type ConversationDetail, type ConversationSummary } from "./types";
@@ -102,8 +103,10 @@ export function Workspace({ signOutControl, voiceAvailable }: { signOutControl: 
   }
 
   const plan = detail?.plan;
+  const history = detail?.history.filter((item) => item.planId !== plan?.id) ?? [];
+  const hasSidePanel = Boolean(plan || history.length);
   return (
-    <div className={`mx-auto grid min-h-[calc(100vh-76px)] max-w-[1600px] ${plan ? "lg:grid-cols-[240px_minmax(0,1fr)_340px]" : "lg:grid-cols-[240px_minmax(0,1fr)]"}`}>
+    <div className={`mx-auto grid min-h-[calc(100vh-76px)] max-w-[1600px] ${hasSidePanel ? "lg:grid-cols-[240px_minmax(0,1fr)_340px]" : "lg:grid-cols-[240px_minmax(0,1fr)]"}`}>
       <aside className={`${menuOpen ? "block" : "hidden"} border-b border-[#E3E7E3] bg-[#F6F6F3] p-5 lg:block lg:border-b-0 lg:border-r`} aria-label="Conversations">
         <button className="min-h-11 w-full rounded-[10px] border border-[#CBD6D2] bg-white px-4 text-left text-sm font-semibold hover:bg-[#EEF3F0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#166B61]" onClick={() => { setActiveId(null); setDetail(null); setError(null); setMenuOpen(false); }} type="button">+ New conversation</button>
         <h2 className="mt-9 text-xs font-semibold uppercase tracking-[0.12em] text-[#5A6664]">Recent conversations</h2>
@@ -125,7 +128,7 @@ export function Workspace({ signOutControl, voiceAvailable }: { signOutControl: 
         </div>
       </section>
 
-      {plan && <aside className="min-w-0 border-t border-[#E3E7E3] bg-[#F6F6F3] p-5 lg:border-l lg:border-t-0 lg:p-6" aria-label="Action review"><div className="lg:sticky lg:top-6"><ActionReview busy={busy} onApprove={() => decide("approve")} onReject={() => decide("reject")} plan={plan} /></div></aside>}
+      {hasSidePanel && <aside className="min-w-0 border-t border-[#E3E7E3] bg-[#F6F6F3] p-5 lg:border-l lg:border-t-0 lg:p-6" aria-label="Action review"><div className="lg:sticky lg:top-6">{plan && <ActionReview busy={busy} onApprove={() => decide("approve")} onReject={() => decide("reject")} plan={plan} />}<ActionHistory items={history} /></div></aside>}
     </div>
   );
 }

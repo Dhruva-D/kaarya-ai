@@ -1,4 +1,5 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
+import { toCalendarHistoryItem } from "../../agent/action-history";
 import { getDb } from "../client";
 import { actionPlans, actions, conversations, messages } from "../schema";
 
@@ -20,6 +21,19 @@ export async function getOwnedConversation(userId: string, id: string) {
     .orderBy(desc(actionPlans.createdAt)).limit(1);
   const [action] = plan ? await db.select().from(actions)
     .where(and(eq(actions.planId, plan.id), eq(actions.userId, userId))).limit(1) : [];
+  const historyRows = await db.select({
+    planId: actionPlans.id,
+    status: actionPlans.status,
+    type: actions.type,
+    args: actions.argumentsJson,
+    providerObjectId: actions.providerObjectId,
+    providerLink: actions.providerLink,
+  }).from(actionPlans).innerJoin(actions, and(eq(actions.planId, actionPlans.id), eq(actions.userId, actionPlans.userId)))
+    .where(and(
+      eq(actionPlans.conversationId, id),
+      eq(actionPlans.userId, userId),
+      inArray(actionPlans.status, ["succeeded", "failed", "unknown"]),
+    )).orderBy(desc(actionPlans.createdAt)).limit(10);
   return {
     ...conversation,
     messages: turns,
@@ -31,5 +45,10 @@ export async function getOwnedConversation(userId: string, id: string) {
       action: { tool: action.type, args: action.argumentsJson },
       receipt: { status: action.status, providerObjectId: action.providerObjectId, providerLink: action.providerLink, errorCode: action.errorCode },
     } : null,
+    history: historyRows.flatMap((row) => {
+      if (row.status !== "succeeded" && row.status !== "failed" && row.status !== "unknown") return [];
+      const item = toCalendarHistoryItem({ ...row, status: row.status });
+      return item ? [item] : [];
+    }),
   };
 }

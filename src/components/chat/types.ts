@@ -8,7 +8,16 @@ export type CalendarPlan = {
   action: { tool: "calendar.create_event"; args: { title: string; startIso: string; endIso: string; timezone: string } };
   receipt: { status: string; providerObjectId?: string | null; providerLink?: string | null; errorCode?: string | null };
 };
-export type ConversationDetail = { id: string; title: string; messages: Turn[]; plan: CalendarPlan | null };
+export type CalendarHistoryItem = {
+  planId: string;
+  status: "succeeded" | "failed" | "unknown";
+  title: string;
+  startIso: string;
+  timezone: string;
+  providerObjectId: string | null;
+  providerLink: string | null;
+};
+export type ConversationDetail = { id: string; title: string; messages: Turn[]; plan: CalendarPlan | null; history: CalendarHistoryItem[] };
 
 export async function readApiError(response: Response): Promise<string> {
   const body = await response.json().catch(() => null);
