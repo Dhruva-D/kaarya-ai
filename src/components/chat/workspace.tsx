@@ -128,7 +128,7 @@ export function Workspace({ signOutControl, voiceAvailable }: { signOutControl: 
         </div>
       </section>
 
-      {hasSidePanel && <aside className="min-w-0 border-t border-[#E3E7E3] bg-[#F6F6F3] p-5 lg:border-l lg:border-t-0 lg:p-6" aria-label="Action review"><div className="lg:sticky lg:top-6">{plan && <ActionReview busy={busy} onApprove={() => decide("approve")} onReject={() => decide("reject")} plan={plan} />}<ActionHistory items={history} /></div></aside>}
+      {hasSidePanel && <aside className="min-w-0 border-t border-[#E3E7E3] bg-[#F6F6F3] p-5 lg:border-l lg:border-t-0 lg:p-6" aria-label="Action review"><div className="lg:sticky lg:top-6">{plan && <ActionReview busy={busy} key={plan.id} onApprove={() => decide("approve")} onReject={() => decide("reject")} plan={plan} />}<ActionHistory items={history} /></div></aside>}
     </div>
   );
 }

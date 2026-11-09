@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { approvalInputSchema, canonicalActionHash, validateCalendarProposal } from "./plan";
+import { approvalInputSchema, canonicalActionHash, isApprovalPreviewLive, validateCalendarProposal } from "./plan";
 
 const action = { tool: "calendar.create_event" as const, args: { title: "Synthetic project meeting", startIso: "2026-11-10T17:00:00+05:30", endIso: "2026-11-10T17:30:00+05:30", timezone: "Asia/Kolkata" } };
 
@@ -22,5 +22,14 @@ describe("Calendar plan review", () => {
     expect(() => validateCalendarProposal(action, "UTC", now)).toThrow(/timezone/);
     expect(() => validateCalendarProposal(action, "Asia/Kolkata", new Date("2026-11-11T00:00:00Z"))).toThrow(/future/);
     expect(() => validateCalendarProposal({ ...action, args: { ...action.args, endIso: "2026-11-11T04:00:00+05:30" } }, "Asia/Kolkata", now)).toThrow(/duration/);
+  });
+
+  it("closes approval at expiry and fails closed on invalid timestamps", () => {
+    const expiry = "2026-11-10T12:00:00.000Z";
+    const before = Date.parse("2026-11-10T11:59:59.999Z");
+    expect(isApprovalPreviewLive("awaiting_approval", expiry, before)).toBe(true);
+    expect(isApprovalPreviewLive("awaiting_approval", expiry, Date.parse(expiry))).toBe(false);
+    expect(isApprovalPreviewLive("succeeded", expiry, before)).toBe(false);
+    expect(isApprovalPreviewLive("awaiting_approval", "invalid", before)).toBe(false);
   });
 });

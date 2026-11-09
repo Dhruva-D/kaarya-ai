@@ -4,6 +4,7 @@ export type CalendarPlan = {
   id: string;
   version: number;
   status: "awaiting_approval" | "executing" | "succeeded" | "failed" | "unknown" | "rejected" | "superseded" | "expired" | "draft" | "needs_details";
+  expiresAt: string;
   canonicalHash: string;
   action: { tool: "calendar.create_event"; args: { title: string; startIso: string; endIso: string; timezone: string } };
   receipt: { status: string; providerObjectId?: string | null; providerLink?: string | null; errorCode?: string | null };

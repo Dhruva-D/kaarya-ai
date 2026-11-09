@@ -12,6 +12,11 @@ export const approvalInputSchema = z.strictObject({
 export type ApprovalInput = z.infer<typeof approvalInputSchema>;
 export type CalendarAction = Extract<Proposal["actions"][number], { tool: "calendar.create_event" }>;
 
+export function isApprovalPreviewLive(status: string, expiresAt: string, now = Date.now()): boolean {
+  const expiry = Date.parse(expiresAt);
+  return status === "awaiting_approval" && Number.isFinite(expiry) && expiry > now;
+}
+
 export function canonicalActionHash(action: CalendarAction): string {
   return createHash("sha256").update(JSON.stringify(action)).digest("hex");
 }

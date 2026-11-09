@@ -41,6 +41,7 @@ export async function getOwnedConversation(userId: string, id: string) {
       id: plan.id,
       version: plan.version,
       status: plan.status,
+      expiresAt: plan.expiresAt.toISOString(),
       canonicalHash: plan.canonicalHash,
       action: { tool: action.type, args: action.argumentsJson },
       receipt: { status: action.status, providerObjectId: action.providerObjectId, providerLink: action.providerLink, errorCode: action.errorCode },
