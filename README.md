@@ -38,3 +38,5 @@ To test Gnani after adding a key, record a **synthetic**, spoken mono 16-bit PCM
 To check model access with a synthetic Calendar request, run `npm run smoke:gemini` after adding `GEMINI_API_KEY`. This prints a proposal, not a Google write.
 
 Never commit `.env.local`, provider keys, OAuth tokens, private messages or real recordings.
+
+For hosting, see [DEPLOYMENT.md](DEPLOYMENT.md). The public URL must be verified with its own HTTPS Google OAuth callback before sharing it as a working demo.
