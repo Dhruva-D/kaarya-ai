@@ -5,7 +5,7 @@ Kaarya AI is a voice-first, human-approved productivity assistant. Phase 1 takes
 ## Current status
 
 - Next.js, TypeScript, Tailwind CSS and shadcn/ui foundation: scaffolded and checked locally.
-- Gnani Prisma v2.5 browser recorder, WAV encoder, authenticated transcription route and editable transcript: implemented; a short synthetic WAV produced a real provider transcript. Browser microphone capture still needs end-to-end verification.
+- Gnani Prisma v2.5 browser recorder, WAV encoder, authenticated transcription route and editable transcript: a short synthetic WAV produced a real provider transcript, and a browser microphone recording returned HTTP 200 with editable transcript text. Typed fallback remains available.
 - Gemini Calendar proposal adapter: strict Zod contract tests and a real `gemini-3.6-flash` structured proposal verified.
 - Drizzle/Postgres schema and checked-in migrations: applied to a Supabase test database.
 - Auth.js Google sign-in and encrypted token vault: live sign-in verified; account token columns were empty and connection tokens encrypted at rest.
@@ -15,7 +15,7 @@ Kaarya AI is a voice-first, human-approved productivity assistant. Phase 1 takes
 - Typed chat and exact Calendar review UI: signed-in desktop and narrow mobile layout inspected; the mobile view showed no horizontal overflow.
 - Tasks, Gmail and voice output: planned after the first verified Calendar journey.
 
-This is a locally verified Phase 1 slice, not a deployed service. Live browser microphone capture, full cross-user HTTP testing, and deployment remain open.
+This is a locally verified Phase 1 slice, not a deployed service. Full cross-user HTTP testing with a second account and deployment remain open.
 
 ## Local setup
 

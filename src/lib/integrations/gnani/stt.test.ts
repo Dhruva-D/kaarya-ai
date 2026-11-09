@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
 import { describe, expect, it, vi } from "vitest";
-import { transcribeWav } from "./stt";
+import { GnaniTranscriptionError, transcribeWav } from "./stt";
 import { validateWav } from "./wav";
 
 function makeWav(seconds = 1, channels = 1): Buffer {
@@ -51,5 +51,14 @@ describe("Gnani Prisma adapter", () => {
     await expect(transcribeWav(makeWav(), {
       apiKey: "test-key", languageCode: "en-IN", fetchImpl: async () => Response.json({ success: true, transcript: "hello", model: "prisma-v3.0" }),
     })).rejects.toThrow(/unsupported/);
+  });
+
+  it("classifies provider rejection and silent clips without exposing provider bodies", async () => {
+    await expect(transcribeWav(makeWav(), {
+      apiKey: "test-key", languageCode: "en-IN", fetchImpl: async () => new Response("private provider body", { status: 422 }),
+    })).rejects.toMatchObject({ code: "PROVIDER_HTTP", providerStatus: 422 });
+    await expect(transcribeWav(makeWav(), {
+      apiKey: "test-key", languageCode: "en-IN", fetchImpl: async () => Response.json({ success: true, transcript: "  ", model: "prisma-v2.5" }),
+    })).rejects.toMatchObject({ code: "NO_SPEECH" } satisfies Partial<GnaniTranscriptionError>);
   });
 });
