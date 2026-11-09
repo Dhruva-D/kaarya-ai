@@ -85,20 +85,20 @@ CREATE TABLE "verification_tokens" (
 );
 --> statement-breakpoint
 ALTER TABLE "action_plans" ADD CONSTRAINT "action_plans_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+CREATE UNIQUE INDEX "conversations_id_user_uq" ON "conversations" USING btree ("id","user_id");--> statement-breakpoint
 ALTER TABLE "action_plans" ADD CONSTRAINT "action_plans_conversation_id_user_id_conversations_id_user_id_fk" FOREIGN KEY ("conversation_id","user_id") REFERENCES "public"."conversations"("id","user_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "actions" ADD CONSTRAINT "actions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+CREATE UNIQUE INDEX "action_plans_id_user_uq" ON "action_plans" USING btree ("id","user_id");--> statement-breakpoint
 ALTER TABLE "actions" ADD CONSTRAINT "actions_plan_id_user_id_action_plans_id_user_id_fk" FOREIGN KEY ("plan_id","user_id") REFERENCES "public"."action_plans"("id","user_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "contacts" ADD CONSTRAINT "contacts_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "conversations" ADD CONSTRAINT "conversations_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "messages" ADD CONSTRAINT "messages_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "messages" ADD CONSTRAINT "messages_conversation_id_user_id_conversations_id_user_id_fk" FOREIGN KEY ("conversation_id","user_id") REFERENCES "public"."conversations"("id","user_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "profiles" ADD CONSTRAINT "profiles_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-CREATE UNIQUE INDEX "action_plans_id_user_uq" ON "action_plans" USING btree ("id","user_id");--> statement-breakpoint
 CREATE INDEX "action_plans_user_status_idx" ON "action_plans" USING btree ("user_id","status");--> statement-breakpoint
 CREATE UNIQUE INDEX "actions_execution_key_uq" ON "actions" USING btree ("execution_key");--> statement-breakpoint
 CREATE INDEX "actions_user_created_idx" ON "actions" USING btree ("user_id","created_at");--> statement-breakpoint
 CREATE INDEX "actions_provider_object_idx" ON "actions" USING btree ("provider","provider_object_id");--> statement-breakpoint
 CREATE INDEX "contacts_user_name_idx" ON "contacts" USING btree ("user_id","display_name");--> statement-breakpoint
-CREATE UNIQUE INDEX "conversations_id_user_uq" ON "conversations" USING btree ("id","user_id");--> statement-breakpoint
 CREATE INDEX "conversations_user_created_idx" ON "conversations" USING btree ("user_id","created_at");--> statement-breakpoint
 CREATE INDEX "messages_conversation_created_idx" ON "messages" USING btree ("conversation_id","created_at");

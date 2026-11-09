@@ -32,7 +32,9 @@ CREATE TABLE "sessions" (
 	"expires" timestamp with time zone NOT NULL
 );
 --> statement-breakpoint
-ALTER TABLE "contacts" ALTER COLUMN "is_confirmed" SET DATA TYPE boolean;--> statement-breakpoint
+ALTER TABLE "contacts" ALTER COLUMN "is_confirmed" DROP DEFAULT;--> statement-breakpoint
+ALTER TABLE "contacts" ALTER COLUMN "is_confirmed" SET DATA TYPE boolean USING "is_confirmed" <> 0;--> statement-breakpoint
+ALTER TABLE "contacts" ALTER COLUMN "is_confirmed" SET DEFAULT false;--> statement-breakpoint
 ALTER TABLE "accounts" ADD CONSTRAINT "accounts_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "google_connections" ADD CONSTRAINT "google_connections_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "sessions" ADD CONSTRAINT "sessions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
