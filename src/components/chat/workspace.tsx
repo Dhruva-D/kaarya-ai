@@ -1,0 +1,131 @@
+"use client";
+
+import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { ActionReview } from "./action-review";
+import { Composer } from "./composer";
+import { MessageList } from "./message-list";
+import { readApiError, type ConversationDetail, type ConversationSummary } from "./types";
+
+export function Workspace({ signOutControl }: { signOutControl: ReactNode }) {
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [detail, setDetail] = useState<ConversationDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const loadDetail = useCallback(async (id: string) => {
+    const response = await fetch(`/api/conversations/${id}`, { cache: "no-store" });
+    if (!response.ok) throw new Error(await readApiError(response));
+    setDetail(await response.json() as ConversationDetail);
+  }, []);
+
+  const refreshSummaries = useCallback(async () => {
+    const response = await fetch("/api/conversations", { cache: "no-store" });
+    if (!response.ok) throw new Error(await readApiError(response));
+    const data = await response.json() as { conversations: ConversationSummary[] };
+    setConversations(data.conversations);
+    return data.conversations;
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function restore() {
+      try {
+        const items = await refreshSummaries();
+        if (!cancelled && items[0]) {
+          setActiveId(items[0].id);
+          await loadDetail(items[0].id);
+        }
+      } catch (cause) {
+        if (!cancelled) setError(cause instanceof Error ? cause.message : "Conversations could not be loaded");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    void restore();
+    return () => { cancelled = true; };
+  }, [loadDetail, refreshSummaries]);
+
+  async function selectConversation(id: string) {
+    setMenuOpen(false);
+    setActiveId(id);
+    setDetail(null);
+    setError(null);
+    try { await loadDetail(id); } catch (cause) { setError(cause instanceof Error ? cause.message : "Conversation could not be loaded"); }
+  }
+
+  async function send(text: string): Promise<boolean> {
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch("/api/chat", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversationId: activeId ?? undefined, text, inputMode: "text", clientRequestId: crypto.randomUUID() }),
+      });
+      if (!response.ok) throw new Error(await readApiError(response));
+      const result = await response.json() as { conversationId: string };
+      setActiveId(result.conversationId);
+      await loadDetail(result.conversationId);
+      await refreshSummaries();
+      return true;
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Message could not be sent");
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function decide(kind: "approve" | "reject") {
+    if (!detail?.plan || busy) return;
+    const plan = detail.plan;
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/plans/${plan.id}/${kind}`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(kind === "approve" ? {
+          planVersion: plan.version, canonicalHash: plan.canonicalHash,
+          confirmation: true, clientRequestId: crypto.randomUUID(),
+        } : { planVersion: plan.version }),
+      });
+      if (!response.ok && response.status !== 202) throw new Error(await readApiError(response));
+      await loadDetail(detail.id);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "The outcome could not be confirmed. Check Calendar before trying again.");
+      await loadDetail(detail.id).catch(() => undefined);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const plan = detail?.plan;
+  return (
+    <div className={`mx-auto grid min-h-[calc(100vh-76px)] max-w-[1600px] ${plan ? "lg:grid-cols-[240px_minmax(0,1fr)_340px]" : "lg:grid-cols-[240px_minmax(0,1fr)]"}`}>
+      <aside className={`${menuOpen ? "block" : "hidden"} border-b border-[#E3E7E3] bg-[#F6F6F3] p-5 lg:block lg:border-b-0 lg:border-r`} aria-label="Conversations">
+        <button className="min-h-11 w-full rounded-[10px] border border-[#CBD6D2] bg-white px-4 text-left text-sm font-semibold hover:bg-[#EEF3F0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#166B61]" onClick={() => { setActiveId(null); setDetail(null); setError(null); setMenuOpen(false); }} type="button">+ New conversation</button>
+        <h2 className="mt-9 text-xs font-semibold uppercase tracking-[0.12em] text-[#5A6664]">Recent conversations</h2>
+        <nav className="mt-3 space-y-1" aria-label="Recent conversations">
+          {conversations.length === 0 && <p className="text-sm leading-6 text-[#5A6664]">Your conversations will appear here.</p>}
+          {conversations.map((item) => <button aria-current={item.id === activeId ? "page" : undefined} className={`block w-full truncate rounded-[10px] px-3 py-2.5 text-left text-sm hover:bg-[#E7EFEC] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#166B61] ${item.id === activeId ? "bg-[#E7EFEC] font-semibold" : ""}`} key={item.id} onClick={() => void selectConversation(item.id)} title={item.title} type="button">{item.title}</button>)}
+        </nav>
+      </aside>
+
+      <section className="flex min-h-[calc(100vh-76px)] min-w-0 flex-col px-5 pb-6 pt-5 sm:px-8 lg:px-10" aria-label="Chat workspace">
+        <div className="flex items-center justify-between gap-3 border-b border-[#E3E7E3] pb-4 lg:justify-end">
+          <button className="min-h-11 rounded-[10px] border border-[#CBD6D2] px-3 text-sm lg:hidden" onClick={() => setMenuOpen(!menuOpen)} type="button">Conversations</button>
+          {signOutControl}
+        </div>
+        <div className="mx-auto flex w-full max-w-[780px] flex-1 flex-col">
+          {loading ? <p className="pt-12 text-sm text-[#5A6664]" role="status">Loading your workspace…</p> : detail?.messages.length ? <div className="flex-1 py-10"><MessageList busy={busy} messages={detail.messages} /></div> : <div className="flex flex-1 flex-col justify-center py-12"><p className="text-sm font-semibold text-[#166B61]">YOUR WORKSPACE</p><h1 className="mt-4 max-w-lg text-3xl font-semibold tracking-tight sm:text-4xl">What would you like to put on your calendar?</h1><p className="mt-4 max-w-xl text-[15px] leading-7 text-[#5A6664]">Describe a meeting in English, Hindi or Hinglish. I’ll ask for missing details and show the exact event before you decide whether to create it.</p></div>}
+          {error && <div className="mb-4 rounded-[10px] border border-[#E4C9C4] bg-[#FFF7F5] px-4 py-3 text-sm text-[#8E392F]" role="alert">{error}</div>}
+          <div className="sticky bottom-0 bg-[#F6F6F3] pb-2 pt-3"><Composer disabled={busy || loading} onSend={send} /><p className="mt-3 text-xs leading-5 text-[#5A6664]">Text mode is available now. Gnani voice input will appear after the real speech check.</p></div>
+        </div>
+      </section>
+
+      {plan && <aside className="min-w-0 border-t border-[#E3E7E3] bg-[#F6F6F3] p-5 lg:border-l lg:border-t-0 lg:p-6" aria-label="Action review"><div className="lg:sticky lg:top-6"><ActionReview busy={busy} onApprove={() => decide("approve")} onReject={() => decide("reject")} plan={plan} /></div></aside>}
+    </div>
+  );
+}
