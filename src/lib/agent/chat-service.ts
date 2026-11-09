@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "../db/client";
 import { actionPlans, actions, conversations, messages, profiles } from "../db/schema";
 import { proposeCalendarAction } from "../integrations/gemini/planner";
@@ -19,8 +19,20 @@ export async function handleChat(userId: string, request: ChatRequest) {
   const [profile] = await db.select({ timezone: profiles.timezone }).from(profiles)
     .where(eq(profiles.userId, userId)).limit(1);
   const timezone = profile?.timezone ?? "Asia/Kolkata";
+  const recent = request.conversationId ? await db.select({ role: messages.role, content: messages.content })
+    .from(messages).where(and(eq(messages.conversationId, request.conversationId), eq(messages.userId, userId)))
+    .orderBy(desc(messages.createdAt)).limit(6) : [];
+  const [pendingPlan] = request.conversationId ? await db.select({ id: actionPlans.id }).from(actionPlans)
+    .where(and(eq(actionPlans.conversationId, request.conversationId), eq(actionPlans.userId, userId), eq(actionPlans.status, "awaiting_approval")))
+    .orderBy(desc(actionPlans.createdAt)).limit(1) : [];
+  const [pendingAction] = pendingPlan ? await db.select({ type: actions.type, args: actions.argumentsJson }).from(actions)
+    .where(and(eq(actions.planId, pendingPlan.id), eq(actions.userId, userId))).limit(1) : [];
   const { proposal, model } = await proposeCalendarAction(
-    { text: request.text, timezone, nowIso: new Date().toISOString() },
+    {
+      text: request.text, timezone, nowIso: new Date().toISOString(),
+      recentTurns: recent.reverse().map((turn) => ({ role: turn.role, content: turn.content.slice(0, 1_000) })),
+      pendingAction: pendingAction ? { tool: pendingAction.type, args: pendingAction.args } : undefined,
+    },
     { apiKey: process.env.GEMINI_API_KEY ?? "", model: process.env.GEMINI_MODEL },
   );
   const action = proposal.kind === "action_plan" ? proposal.actions[0] : undefined;

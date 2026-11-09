@@ -60,6 +60,13 @@ export const googleConnections = pgTable("google_connections", {
   updatedAt: time("updated_at").notNull().defaultNow(),
 }, (table) => [uniqueIndex("google_connections_user_subject_uq").on(table.userId, table.providerSubject)]);
 
+export const providerRateLimits = pgTable("provider_rate_limits", {
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  operation: varchar("operation", { length: 24 }).notNull(),
+  windowStart: time("window_start").notNull(),
+  count: integer("count").notNull().default(0),
+}, (table) => [primaryKey({ columns: [table.userId, table.operation, table.windowStart] })]);
+
 export const profiles = pgTable("profiles", {
   userId: text("user_id").primaryKey().references(() => users.id, { onDelete: "cascade" }),
   preferredLanguage: varchar("preferred_language", { length: 16 }).notNull().default("hi-IN"),

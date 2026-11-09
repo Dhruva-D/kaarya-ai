@@ -11,9 +11,11 @@ describe("Gemini proposal adapter", () => {
       expect(params.store).toBe(false);
       expect(params.response_format.mime_type).toBe("application/json");
       expect(params.input).toContain("Asia/Kolkata");
+      expect(params.input).toContain("What time?");
+      expect(params.input).toContain("Current pending Calendar draft");
       return { status: "completed", output_text: JSON.stringify({ kind: "action_plan", assistantMessage: "Review this event.", questions: [], actions: [action] }) };
     });
-    const result = await proposeCalendarAction(input, { apiKey: "test-key", createInteraction });
+    const result = await proposeCalendarAction({ ...input, recentTurns: [{ role: "assistant", content: "What time?" }], pendingAction: action }, { apiKey: "test-key", createInteraction });
     expect(result.proposal.actions).toEqual([action]);
   });
 

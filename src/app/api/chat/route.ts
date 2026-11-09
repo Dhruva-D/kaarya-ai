@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { chatRequestSchema } from "@/lib/agent/chat-request";
 import { ConversationNotFound, handleChat, UnsafeProposal } from "@/lib/agent/chat-service";
 import { isSameOriginPost } from "@/lib/security/origin";
+import { claimProviderBudget } from "@/lib/security/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -10,9 +11,11 @@ export async function POST(request: Request) {
   if (!process.env.GEMINI_API_KEY || !process.env.DATABASE_URL) return Response.json({ code: "NOT_CONFIGURED", message: "Chat is not configured yet" }, { status: 503 });
   const session = await auth();
   if (!session?.user?.id) return Response.json({ code: "UNAUTHENTICATED", message: "Sign in to continue" }, { status: 401 });
+  if (Number(request.headers.get("content-length") ?? 0) > 10_000) return Response.json({ code: "INVALID_INPUT", message: "Message is too large" }, { status: 413 });
   const parsed = chatRequestSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return Response.json({ code: "INVALID_INPUT", message: "Please check your message" }, { status: 400 });
   try {
+    if (!await claimProviderBudget(session.user.id, "chat")) return Response.json({ code: "RATE_LIMITED", message: "Please wait a few minutes before sending more requests" }, { status: 429 });
     return Response.json(await handleChat(session.user.id, parsed.data));
   } catch (error) {
     if (error instanceof ConversationNotFound) return Response.json({ code: "NOT_FOUND", message: "Conversation not found" }, { status: 404 });
