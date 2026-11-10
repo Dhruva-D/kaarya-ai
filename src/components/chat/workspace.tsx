@@ -57,6 +57,7 @@ export function Workspace({ signOutControl, voiceAvailable }: { signOutControl: 
 
   async function selectConversation(id: string) {
     setMenuOpen(false);
+    setAutoSpeakId(null);
     setActiveId(id);
     setDetail(null);
     setError(null);
@@ -118,7 +119,7 @@ export function Workspace({ signOutControl, voiceAvailable }: { signOutControl: 
   return (
     <div className={`mx-auto grid min-h-[calc(100vh-76px)] max-w-[1600px] ${hasSidePanel ? "lg:grid-cols-[240px_minmax(0,1fr)_340px]" : "lg:grid-cols-[240px_minmax(0,1fr)]"}`}>
       <aside className={`${menuOpen ? "block" : "hidden"} border-b border-[#E3E7E3] bg-[#F6F6F3] p-5 lg:block lg:border-b-0 lg:border-r`} aria-label="Conversations">
-        <button className="min-h-11 w-full rounded-[10px] border border-[#CBD6D2] bg-white px-4 text-left text-sm font-semibold hover:bg-[#EEF3F0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#166B61]" onClick={() => { setActiveId(null); setDetail(null); setError(null); setMenuOpen(false); }} type="button">+ New conversation</button>
+        <button className="min-h-11 w-full rounded-[10px] border border-[#CBD6D2] bg-white px-4 text-left text-sm font-semibold hover:bg-[#EEF3F0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#166B61]" onClick={() => { setActiveId(null); setDetail(null); setAutoSpeakId(null); setError(null); setMenuOpen(false); }} type="button">+ New conversation</button>
         <h2 className="mt-9 text-xs font-semibold uppercase tracking-[0.12em] text-[#5A6664]">Recent conversations</h2>
         <nav className="mt-3 space-y-1" aria-label="Recent conversations">
           {conversations.length === 0 && <p className="text-sm leading-6 text-[#5A6664]">Your conversations will appear here.</p>}

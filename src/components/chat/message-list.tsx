@@ -26,7 +26,9 @@ export function MessageList({ messages, busy, voiceAvailable, autoSpeakId }: { m
       });
       if (!response.ok) throw new Error(await readApiError(response));
       if (current !== sequence.current) return;
-      const url = URL.createObjectURL(await response.blob());
+      const blob = await response.blob();
+      if (current !== sequence.current) return;
+      const url = URL.createObjectURL(blob);
       const audio = new Audio(url);
       playback.current = { audio, url };
       const finish = () => { if (playback.current?.audio === audio) { URL.revokeObjectURL(url); playback.current = null; setPlayingId(null); } };
