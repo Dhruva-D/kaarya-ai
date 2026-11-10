@@ -10,5 +10,6 @@ describe("Calendar detail gate", () => {
 
   it("accepts details stated across turns", () => {
     expect(missingCalendarDetails(["Create a synthetic project meeting tomorrow at 5 PM", "For 30 minutes"], "synthetic project meeting")).toEqual([]);
+    expect(missingCalendarDetails(["Schedule a synthetic invite test on 11 November 2026 from 6:00 to 6:30 PM IST"], "synthetic invite test")).toEqual([]);
   });
 });
