@@ -12,7 +12,7 @@ export default async function WorkspacePage() {
   return (
     <main className="min-h-screen bg-[#F6F6F3] text-[#222A2B]">
       <header className="border-b border-[#E3E7E3] bg-white px-5 py-5 sm:px-8"><div className="mx-auto max-w-[1600px] text-lg font-semibold tracking-tight text-[#166B61]">Kaarya AI</div></header>
-      <Workspace voiceAvailable={Boolean(process.env.GNANI_API_KEY)} signOutControl={<form action={async () => { "use server"; await signOut({ redirectTo: "/sign-in" }); }}><button className="min-h-11 rounded-[10px] px-3 text-sm font-medium hover:bg-[#E7EFEC] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#166B61]" type="submit">Sign out</button></form>} />
+      <Workspace senderEmail={session.user.email ?? null} voiceAvailable={Boolean(process.env.GNANI_API_KEY)} signOutControl={<form action={async () => { "use server"; await signOut({ redirectTo: "/sign-in" }); }}><button className="min-h-11 rounded-[10px] px-3 text-sm font-medium hover:bg-[#E7EFEC] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#166B61]" type="submit">Sign out</button></form>} />
     </main>
   );
 }

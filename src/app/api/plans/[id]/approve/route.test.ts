@@ -53,7 +53,7 @@ describe("Calendar approval route guards", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.DATABASE_URL = "postgresql://local.invalid/test";
-    mocks.auth.mockResolvedValue({ user: { id: "owner-A" } });
+    mocks.auth.mockResolvedValue({ user: { id: "owner-A", email: "sender@example.com" } });
     mocks.getCalendarAuth.mockResolvedValue({});
     mocks.getTasksAuth.mockResolvedValue({});
     mocks.getGmailAuth.mockResolvedValue({});
@@ -137,6 +137,15 @@ describe("Calendar approval route guards", () => {
     expect(mocks.getCalendarAuth).not.toHaveBeenCalled();
     expect(mocks.getTasksAuth).not.toHaveBeenCalled();
     expect(mocks.sendGmailMessage).toHaveBeenCalledWith(mail, {});
+  });
+
+  it("does not send Gmail when the sending account cannot be shown", async () => {
+    mocks.auth.mockResolvedValue({ user: { id: "owner-A", email: null } });
+    mocks.getOwnedPendingActionTypes.mockResolvedValue(["gmail.send"]);
+    const response = await POST(request(), context);
+    expect(response.status).toBe(403);
+    expect(mocks.getGmailAuth).not.toHaveBeenCalled();
+    expect(mocks.claimActionPlan).not.toHaveBeenCalled();
   });
 
   it("binds both actions to one approval and saves separate receipts in order", async () => {

@@ -38,6 +38,9 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   if (!types.length || types.length > 2 || types.some((type) => !supported.has(type as Tool))) {
     return Response.json({ code: "STALE_PLAN", message: "This plan is expired, changed, or already approved" }, { status: 409 });
   }
+  if (types.some((type) => type === "gmail.send") && !session.user.email) {
+    return Response.json({ code: "GOOGLE_ACCOUNT_UNKNOWN", message: "The sending Google account could not be confirmed. Sign in again before sending email." }, { status: 403 });
+  }
   const authByType = new Map<Tool, GoogleAuth>();
   try {
     for (const type of types) {

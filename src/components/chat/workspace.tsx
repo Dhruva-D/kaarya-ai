@@ -10,7 +10,7 @@ import { Composer } from "./composer";
 import { MessageList } from "./message-list";
 import { readApiError, type CalendarPlan, type TaskPlan, type MailPlan, type BatchPlan, type ConversationDetail, type ConversationSummary } from "./types";
 
-export function Workspace({ signOutControl, voiceAvailable }: { signOutControl: ReactNode; voiceAvailable: boolean }) {
+export function Workspace({ signOutControl, voiceAvailable, senderEmail }: { signOutControl: ReactNode; voiceAvailable: boolean; senderEmail: string | null }) {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [detail, setDetail] = useState<ConversationDetail | null>(null);
@@ -140,7 +140,7 @@ export function Workspace({ signOutControl, voiceAvailable }: { signOutControl: 
         </div>
       </section>
 
-      {hasSidePanel && <aside className="min-w-0 border-t border-[#E3E7E3] bg-[#F6F6F3] p-5 lg:border-l lg:border-t-0 lg:p-6" aria-label="Action review"><div className="lg:sticky lg:top-6">{plan && plan.actions?.length === 2 ? <BatchReview busy={busy} creating={decisionBusy} key={plan.id} onApprove={() => decide("approve")} onReject={() => decide("reject")} plan={plan as BatchPlan} /> : <>{plan?.action.tool === "calendar.create_event" && <ActionReview busy={busy} creating={decisionBusy} key={plan.id} onApprove={() => decide("approve")} onReject={() => decide("reject")} plan={plan as CalendarPlan} />}{plan?.action.tool === "tasks.create_task" && <TaskReview busy={busy} creating={decisionBusy} key={plan.id} onApprove={() => decide("approve")} onReject={() => decide("reject")} plan={plan as TaskPlan} />}{plan?.action.tool === "gmail.send" && <MailReview busy={busy} creating={decisionBusy} key={plan.id} onApprove={() => decide("approve")} onReject={() => decide("reject")} plan={plan as MailPlan} />}</>}<ActionHistory items={history} /></div></aside>}
+      {hasSidePanel && <aside className="min-w-0 border-t border-[#E3E7E3] bg-[#F6F6F3] p-5 lg:border-l lg:border-t-0 lg:p-6" aria-label="Action review"><div className="lg:sticky lg:top-6">{plan && plan.actions?.length === 2 ? <BatchReview busy={busy} creating={decisionBusy} key={plan.id} onApprove={() => decide("approve")} onReject={() => decide("reject")} plan={plan as BatchPlan} senderEmail={senderEmail} /> : <>{plan?.action.tool === "calendar.create_event" && <ActionReview busy={busy} creating={decisionBusy} key={plan.id} onApprove={() => decide("approve")} onReject={() => decide("reject")} plan={plan as CalendarPlan} />}{plan?.action.tool === "tasks.create_task" && <TaskReview busy={busy} creating={decisionBusy} key={plan.id} onApprove={() => decide("approve")} onReject={() => decide("reject")} plan={plan as TaskPlan} />}{plan?.action.tool === "gmail.send" && <MailReview busy={busy} creating={decisionBusy} key={plan.id} onApprove={() => decide("approve")} onReject={() => decide("reject")} plan={plan as MailPlan} senderEmail={senderEmail} />}</>}<ActionHistory items={history} /></div></aside>}
     </div>
   );
 }
