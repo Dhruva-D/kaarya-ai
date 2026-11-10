@@ -3,7 +3,7 @@ import { getDb } from "../db/client";
 import { providerRateLimits } from "../db/schema";
 
 const windowMs = 10 * 60_000;
-const limits = { chat: 20, gnani_stt: 10 } as const;
+const limits = { chat: 20, gnani_stt: 10, gnani_tts: 20 } as const;
 export type MeteredOperation = keyof typeof limits;
 
 export function rateWindowStart(now = new Date()): Date {

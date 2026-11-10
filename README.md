@@ -10,10 +10,11 @@ Kaarya AI is a voice-first, human-approved productivity assistant. Phase 1 takes
 - Drizzle/Postgres schema and checked-in migrations: applied to a Supabase test database.
 - Auth.js Google sign-in and encrypted token vault: live sign-in verified; account token columns were empty and connection tokens encrypted at rest.
 - Authenticated typed chat route and owned Calendar plan persistence: live typed request and review verified. Recent completed actions remain visible when a newer plan is pending in the same conversation.
-- Per-user database request budgets for chat and transcription: implemented with a generated migration; live concurrent behavior not yet checked against Postgres.
+- Per-user database request budgets for chat, transcription and synthesis: implemented with a generated migration; live concurrent behavior not yet checked against Postgres.
 - Approved Calendar execution route and encrypted credential loading: one user-approved, guest-free synthetic event was created on the connected test account, with a stored Google event ID and the event observed in Google Calendar. Duplicate and foreign-user claims of the same completed plan were rejected in a live database check. Expired previews close in the UI; the server also rejects stale approvals.
 - Typed chat and exact Calendar review UI: signed-in desktop and narrow mobile layout inspected; the mobile view showed no horizontal overflow.
-- Tasks, Gmail and voice output: planned after the first verified Calendar journey.
+- Gnani Timbre v2.5 voice output: an authenticated, bounded WAV route and manual "Play voice reply" control are implemented. A synthetic direct provider request and signed-in browser playback completed. Voice replies currently speak stored English assistant text; matching the detected spoken language and automatic playback remain open.
+- Tasks and Gmail: not implemented.
 
 This is a locally verified Phase 1 slice, not a deployed service. Full cross-user HTTP testing with a second account and deployment remain open.
 
