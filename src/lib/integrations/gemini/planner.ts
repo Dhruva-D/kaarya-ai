@@ -55,6 +55,7 @@ export async function proposeCalendarAction(
       "You may propose one Calendar event, ask a precise follow-up question, or say the request is unsupported.",
       "Never claim an action has executed. No tools are available to you.",
       "Do not invent people, email addresses, dates, or private facts. Ask when an essential detail is ambiguous.",
+      "A Calendar action needs a user-specified event title and duration. If either is missing, ask a concise follow-up question; never silently choose a duration.",
       "Use the recent conversation and pending draft only to resolve the latest user's references or corrections.",
       "For an event, use an absolute ISO start and end with offset in the user's timezone.",
       "Write assistantMessage and every clarification question in the requested reply language. Keep Calendar title as the user states it. Do not translate email addresses or names.",

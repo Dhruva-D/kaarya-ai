@@ -6,6 +6,7 @@ import { proposeCalendarAction } from "../integrations/gemini/planner";
 import { canonicalActionHash, validateCalendarProposal } from "./plan";
 import type { ChatRequest } from "./chat-request";
 import { replyCopy } from "./reply-copy";
+import { calendarDetailQuestion, missingCalendarDetails } from "./calendar-slots";
 
 export class ConversationNotFound extends Error {}
 export class UnsafeProposal extends Error {}
@@ -36,7 +37,10 @@ export async function handleChat(userId: string, request: ChatRequest) {
     },
     { apiKey: process.env.GEMINI_API_KEY ?? "", model: process.env.GEMINI_MODEL },
   );
-  const action = proposal.kind === "action_plan" ? proposal.actions[0] : undefined;
+  let action = proposal.kind === "action_plan" ? proposal.actions[0] : undefined;
+  const userTurns = [...recent.filter((turn) => turn.role === "user").map((turn) => turn.content), request.text];
+  const missingDetails = action ? missingCalendarDetails(userTurns, action.args.title) : [];
+  if (missingDetails.length) action = undefined;
   if (action) {
     try {
       validateCalendarProposal(action, timezone);
@@ -44,7 +48,9 @@ export async function handleChat(userId: string, request: ChatRequest) {
       throw new UnsafeProposal("The proposed event needs clarification before it can be reviewed");
     }
   }
-  const assistantText = action
+  const assistantText = missingDetails.length
+    ? calendarDetailQuestion(missingDetails, request.languageCode)
+    : action
     ? replyCopy("review", request.languageCode)
     : proposal.kind === "needs_clarification"
       ? proposal.questions.join(" ")
@@ -75,8 +81,8 @@ export async function handleChat(userId: string, request: ChatRequest) {
   return {
     conversationId,
     assistantText,
-    resultType: proposal.kind,
-    questions: proposal.questions,
+    resultType: missingDetails.length ? "needs_clarification" : proposal.kind,
+    questions: missingDetails.length ? [assistantText] : proposal.questions,
     plan: action && planId && canonicalHash ? { id: planId, version: 1, canonicalHash, action } : null,
   };
 }
