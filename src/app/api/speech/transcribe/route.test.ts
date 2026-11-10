@@ -31,7 +31,6 @@ function wav(): Uint8Array {
 function request(audio = wav()) {
   const form = new FormData();
   form.append("audio", new Blob([new Uint8Array(audio)], { type: "audio/wav" }), "speech.wav");
-  form.append("languageCode", "en-IN");
   return new Request("http://localhost:3000/api/speech/transcribe", {
     method: "POST", headers: { origin: "http://localhost:3000" }, body: form,
   });

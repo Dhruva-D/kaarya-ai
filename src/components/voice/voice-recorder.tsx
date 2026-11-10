@@ -5,11 +5,12 @@ import { encodePcm16Wav, resampleMono } from "@/lib/audio/wav-encode";
 import { readApiError } from "@/components/chat/types";
 
 type VoiceState = "idle" | "recording" | "processing" | "transcribing";
+const languageNames: Record<string, string> = { "bn-IN": "Bengali", "en-IN": "English", "gu-IN": "Gujarati", "hi-IN": "Hindi", "kn-IN": "Kannada", "ml-IN": "Malayalam", "mr-IN": "Marathi", "pa-IN": "Punjabi", "ta-IN": "Tamil", "te-IN": "Telugu" };
 
 export function VoiceRecorder({ onTranscript }: { onTranscript: (text: string) => void }) {
   const [state, setState] = useState<VoiceState>("idle");
   const [seconds, setSeconds] = useState(0);
-  const [language, setLanguage] = useState<"hi-IN" | "en-IN">("hi-IN");
+  const [detectedLanguage, setDetectedLanguage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const recorder = useRef<MediaRecorder | null>(null);
   const stream = useRef<MediaStream | null>(null);
@@ -35,12 +36,12 @@ export function VoiceRecorder({ onTranscript }: { onTranscript: (text: string) =
       const wav = encodePcm16Wav(resampleMono(decoded.getChannelData(0), decoded.sampleRate));
       const form = new FormData();
       form.append("audio", new Blob([new Uint8Array(wav)], { type: "audio/wav" }), "speech.wav");
-      form.append("languageCode", language);
       setState("transcribing");
       const response = await fetch("/api/speech/transcribe", { method: "POST", body: form });
       if (!response.ok) throw new Error(await readApiError(response));
-      const result = await response.json() as { transcript: string; model: string };
-      if (!result.transcript.trim() || result.model !== "prisma-v2.5") throw new Error("Gnani did not return a valid transcript");
+      const result = await response.json() as { transcript: string; model: string; detectedLanguageCode: string };
+      if (!result.transcript.trim() || result.model !== "prisma-v3.0" || !languageNames[result.detectedLanguageCode]) throw new Error("Gnani did not return a valid transcript");
+      setDetectedLanguage(languageNames[result.detectedLanguageCode]);
       onTranscript(result.transcript);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Voice transcription failed. You can type instead.");
@@ -54,6 +55,7 @@ export function VoiceRecorder({ onTranscript }: { onTranscript: (text: string) =
 
   async function start() {
     setError(null);
+    setDetectedLanguage(null);
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
       setError("This browser cannot record audio. You can type your request instead.");
       return;
@@ -110,9 +112,7 @@ export function VoiceRecorder({ onTranscript }: { onTranscript: (text: string) =
         </> : null}
         {state === "processing" && <span role="status">Preparing WAV audio…</span>}
         {state === "transcribing" && <span role="status">Transcribing with Gnani Prisma…</span>}
-        <label className="ml-auto flex items-center gap-2 text-xs text-[#5A6664]">Input language
-          <select className="min-h-11 rounded-[8px] border border-[#CBD6D2] bg-white px-2 text-sm text-[#222A2B]" disabled={state !== "idle"} onChange={(event) => setLanguage(event.target.value as "hi-IN" | "en-IN")} value={language}><option value="hi-IN">Hindi / Hinglish</option><option value="en-IN">English (India)</option></select>
-        </label>
+        <span className="ml-auto text-xs text-[#5A6664]">{detectedLanguage ? `Detected ${detectedLanguage}` : "Language detected automatically"}</span>
       </div>
       {error && <p className="mt-2 text-sm text-[#A34236]" role="alert">{error}</p>}
     </div>

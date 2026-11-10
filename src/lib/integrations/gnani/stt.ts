@@ -5,7 +5,8 @@ import { validateWav } from "./wav";
 const responseSchema = z.object({
   success: z.literal(true),
   transcript: z.string().trim().min(1),
-  model: z.literal("prisma-v2.5"),
+  model: z.literal("prisma-v3.0"),
+  detected_language_code: z.enum(["bn-IN", "en-IN", "gu-IN", "hi-IN", "kn-IN", "ml-IN", "mr-IN", "pa-IN", "ta-IN", "te-IN"]),
   request_id: z.string().max(128).optional(),
 });
 
@@ -21,7 +22,8 @@ export class GnaniTranscriptionError extends Error {
 
 export type Transcription = {
   transcript: string;
-  model: "prisma-v2.5";
+  model: "prisma-v3.0";
+  detectedLanguageCode: z.infer<typeof responseSchema>["detected_language_code"];
   requestId?: string;
 };
 
@@ -29,7 +31,6 @@ export async function transcribeWav(
   audio: Buffer,
   options: {
     apiKey: string;
-    languageCode: "hi-IN" | "en-IN";
     endpoint?: string;
     fetchImpl?: typeof fetch;
   },
@@ -39,7 +40,8 @@ export async function transcribeWav(
 
   const form = new FormData();
   form.append("audio_file", new Blob([new Uint8Array(audio)], { type: "audio/wav" }), "speech.wav");
-  form.append("language_code", options.languageCode);
+  form.append("model", "prisma-v3.0");
+  form.append("language_code", "indic-auto");
 
   let response: Response;
   try {
@@ -68,6 +70,7 @@ export async function transcribeWav(
   return {
     transcript: data.data.transcript,
     model: data.data.model,
+    detectedLanguageCode: data.data.detected_language_code,
     requestId: data.data.request_id,
   };
 }

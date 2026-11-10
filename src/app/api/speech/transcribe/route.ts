@@ -4,11 +4,8 @@ import { GnaniTranscriptionError, transcribeWav } from "@/lib/integrations/gnani
 import { validateWav } from "@/lib/integrations/gnani/wav";
 import { isSameOriginPost } from "@/lib/security/origin";
 import { claimProviderBudget } from "@/lib/security/rate-limit";
-import { z } from "zod";
 
 export const runtime = "nodejs";
-
-const languageSchema = z.enum(["hi-IN", "en-IN"]);
 
 export async function POST(request: Request) {
   if (!isSameOriginPost(request)) return Response.json({ code: "BAD_ORIGIN", message: "Request origin was rejected" }, { status: 403 });
@@ -20,9 +17,8 @@ export async function POST(request: Request) {
   }
   const form = await request.formData().catch(() => null);
   const audio = form?.get("audio");
-  const language = languageSchema.safeParse(form?.get("languageCode"));
-  if (!(audio instanceof File) || audio.size > 3_000_000 || audio.size < 44 || !language.success) {
-    return Response.json({ code: "INVALID_AUDIO", message: "Use a short WAV recording in Hindi or English" }, { status: 400 });
+  if (!(audio instanceof File) || audio.size > 3_000_000 || audio.size < 44) {
+    return Response.json({ code: "INVALID_AUDIO", message: "Use a short WAV recording" }, { status: 400 });
   }
   const wav = Buffer.from(await audio.arrayBuffer());
   try {
@@ -34,7 +30,6 @@ export async function POST(request: Request) {
     if (!await claimProviderBudget(session.user.id, "gnani_stt")) return Response.json({ code: "RATE_LIMITED", message: "Please wait before making another voice request" }, { status: 429 });
     const result = await transcribeWav(wav, {
       apiKey: process.env.GNANI_API_KEY,
-      languageCode: language.data,
       endpoint: process.env.GNANI_STT_URL,
     });
     return Response.json({ provider: "gnani", ...result });

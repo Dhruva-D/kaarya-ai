@@ -29,36 +29,36 @@ describe("Gnani Prisma adapter", () => {
     expect(() => validateWav(Buffer.from("not WAV"))).toThrow(/WAV/);
   });
 
-  it("sends Gnani's documented multipart fields and accepts a real-shaped v2.5 response", async () => {
+  it("requests auto-detection and accepts a real-shaped v3.0 response", async () => {
     const fetchImpl = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
       expect(init?.headers).toEqual({ "X-API-Key-ID": "test-key" });
       expect(init?.body).toBeInstanceOf(FormData);
       const form = init?.body as FormData;
-      expect(form.get("language_code")).toBe("hi-IN");
-      expect(form.get("model")).toBeNull();
+      expect(form.get("language_code")).toBe("indic-auto");
+      expect(form.get("model")).toBe("prisma-v3.0");
       expect(form.get("audio_file")).toBeInstanceOf(Blob);
-      return Response.json({ success: true, transcript: "नमस्ते", model: "prisma-v2.5", request_id: "test-id" });
+      return Response.json({ success: true, transcript: "ನಮಸ್ಕಾರ", model: "prisma-v3.0", detected_language_code: "kn-IN", request_id: "test-id" });
     });
-    const result = await transcribeWav(makeWav(), { apiKey: "test-key", languageCode: "hi-IN", fetchImpl });
-    expect(result).toEqual({ transcript: "नमस्ते", model: "prisma-v2.5", requestId: "test-id" });
+    const result = await transcribeWav(makeWav(), { apiKey: "test-key", fetchImpl });
+    expect(result).toEqual({ transcript: "ನಮಸ್ಕಾರ", model: "prisma-v3.0", detectedLanguageCode: "kn-IN", requestId: "test-id" });
     expect(fetchImpl).toHaveBeenCalledOnce();
   });
 
   it("does not turn provider errors or another model into a success", async () => {
     await expect(transcribeWav(makeWav(), {
-      apiKey: "test-key", languageCode: "en-IN", fetchImpl: async () => new Response("private error", { status: 401 }),
+      apiKey: "test-key", fetchImpl: async () => new Response("private error", { status: 401 }),
     })).rejects.toThrow("HTTP 401");
     await expect(transcribeWav(makeWav(), {
-      apiKey: "test-key", languageCode: "en-IN", fetchImpl: async () => Response.json({ success: true, transcript: "hello", model: "prisma-v3.0" }),
+      apiKey: "test-key", fetchImpl: async () => Response.json({ success: true, transcript: "hello", model: "prisma-v2.5" }),
     })).rejects.toThrow(/unsupported/);
   });
 
   it("classifies provider rejection and silent clips without exposing provider bodies", async () => {
     await expect(transcribeWav(makeWav(), {
-      apiKey: "test-key", languageCode: "en-IN", fetchImpl: async () => new Response("private provider body", { status: 422 }),
+      apiKey: "test-key", fetchImpl: async () => new Response("private provider body", { status: 422 }),
     })).rejects.toMatchObject({ code: "PROVIDER_HTTP", providerStatus: 422 });
     await expect(transcribeWav(makeWav(), {
-      apiKey: "test-key", languageCode: "en-IN", fetchImpl: async () => Response.json({ success: true, transcript: "  ", model: "prisma-v2.5" }),
+      apiKey: "test-key", fetchImpl: async () => Response.json({ success: true, transcript: "  ", model: "prisma-v3.0", detected_language_code: "en-IN" }),
     })).rejects.toMatchObject({ code: "NO_SPEECH" } satisfies Partial<GnaniTranscriptionError>);
   });
 });

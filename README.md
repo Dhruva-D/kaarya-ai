@@ -5,7 +5,7 @@ Kaarya AI is a voice-first, human-approved productivity assistant. Phase 1 takes
 ## Current status
 
 - Next.js, TypeScript, Tailwind CSS and shadcn/ui foundation: scaffolded and checked locally.
-- Gnani Prisma v2.5 browser recorder, WAV encoder, authenticated transcription route and editable transcript: a short synthetic WAV produced a real provider transcript, and a browser microphone recording returned HTTP 200 with editable transcript text. Typed fallback remains available.
+- Gnani Prisma v3.0 browser recorder, WAV encoder, authenticated transcription route and editable transcript: `indic-auto` detects one of ten supported languages. A synthetic clip returned a real v3.0 transcript and detected language. Browser microphone capture was verified earlier with v2.5; the v3.0 browser path still needs a user microphone check. Typed fallback remains available.
 - Gemini Calendar proposal adapter: strict Zod contract tests and real `gemini-3.6-flash` structured proposals verified. When that model reaches its project quota, a real `gemini-3.5-flash-lite` structured proposal is used as the bounded fallback; this was verified in the signed-in UI.
 - Drizzle/Postgres schema and checked-in migrations: applied to a Supabase test database.
 - Auth.js Google sign-in and encrypted token vault: live sign-in verified; account token columns were empty and connection tokens encrypted at rest.
@@ -33,7 +33,7 @@ After adding a Supabase Postgres `DATABASE_URL`, run `npm run db:migrate`. Schem
 
 `TOKEN_ENCRYPTION_KEY` must be a base64 encoding of 32 random bytes. In PowerShell, run `[Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))` twice and use different outputs for `TOKEN_ENCRYPTION_KEY` and `AUTH_SECRET` in `.env.local`. Register the Google OAuth callback `http://localhost:3000/api/auth/callback/google`.
 
-To test Gnani after adding a key, record a **synthetic**, spoken mono 16-bit PCM WAV clip (8–44.1 kHz, 0.1–30 seconds) and run `npm run smoke:gnani -- <path-to-clip.wav> hi-IN`. The script prints the actual response; do not use private speech or paste the transcript into public logs. Browser recording must also be checked with microphone permission after sign-in.
+To test Gnani after adding a key, record a **synthetic**, spoken mono 16-bit PCM WAV clip (8–44.1 kHz, 0.1–30 seconds) and run `npm run smoke:gnani -- <path-to-clip.wav>`. The script prints the actual v3.0 response and detected language; do not use private speech or paste the transcript into public logs. Browser recording must also be checked with microphone permission after sign-in.
 
 To check model access with a synthetic Calendar request, run `npm run smoke:gemini` after adding `GEMINI_API_KEY`. This prints a proposal, not a Google write.
 
