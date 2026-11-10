@@ -1,6 +1,7 @@
-import { calendarActionSchema } from "./proposal";
+import { calendarActionSchema, taskActionSchema } from "./proposal";
 
 export type CalendarHistoryItem = {
+  tool: "calendar.create_event";
   planId: string;
   status: "succeeded" | "failed" | "unknown";
   title: string;
@@ -26,6 +27,7 @@ export function toCalendarHistoryItem(row: {
     return null;
   }
   return {
+    tool: "calendar.create_event",
     planId: row.planId,
     status: row.status,
     title: action.data.args.title,
@@ -34,6 +36,20 @@ export function toCalendarHistoryItem(row: {
     providerObjectId: row.providerObjectId,
     providerLink: safeCalendarEventLink(row.providerLink),
   };
+}
+
+export function toTaskHistoryItem(row: {
+  planId: string; status: "succeeded" | "failed" | "unknown"; type: string; args: unknown;
+  providerObjectId: string | null; providerLink: string | null;
+}) {
+  const action = taskActionSchema.safeParse({ tool: row.type, args: row.args });
+  if (!action.success) return null;
+  const link = row.providerLink && URL.canParse(row.providerLink) && (() => {
+    const url = new URL(row.providerLink!);
+    return url.protocol === "https:" && url.hostname === "tasks.google.com";
+  })() ? row.providerLink : null;
+  return { tool: "tasks.create_task" as const, planId: row.planId, status: row.status, title: action.data.args.title,
+    dueDate: action.data.args.dueDate, providerObjectId: row.providerObjectId, providerLink: link };
 }
 
 export function safeCalendarEventLink(value: string | null): string | null {

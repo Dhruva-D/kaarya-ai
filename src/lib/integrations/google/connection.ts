@@ -5,6 +5,7 @@ import { googleConnections } from "../../db/schema";
 import { decryptToken, encryptToken, parseTokenKey } from "../../security/token-crypto";
 
 const calendarScope = "https://www.googleapis.com/auth/calendar.events";
+const tasksScope = "https://www.googleapis.com/auth/tasks";
 
 export class CalendarConnectionUnavailable extends Error {}
 
@@ -12,12 +13,16 @@ export function hasCalendarScope(scopes: string): boolean {
   return scopes.split(/\s+/).includes(calendarScope);
 }
 
-export async function getCalendarAuth(userId: string) {
+export function hasTasksScope(scopes: string): boolean {
+  return scopes.split(/\s+/).includes(tasksScope);
+}
+
+async function getGoogleAuth(userId: string, requiredScope: string, label: string) {
   const db = getDb();
   const connections = await db.select().from(googleConnections)
     .where(and(eq(googleConnections.userId, userId), eq(googleConnections.status, "connected"))).limit(2);
-  if (connections.length !== 1 || !hasCalendarScope(connections[0].scopes)) {
-    throw new CalendarConnectionUnavailable("Connect a Google account with Calendar permission");
+  if (connections.length !== 1 || !connections[0].scopes.split(/\s+/).includes(requiredScope)) {
+    throw new CalendarConnectionUnavailable(`Connect a Google account with ${label} permission`);
   }
   const connection = connections[0];
   const key = parseTokenKey(process.env.TOKEN_ENCRYPTION_KEY);
@@ -42,4 +47,12 @@ export async function getCalendarAuth(userId: string) {
     }
   }
   return auth;
+}
+
+export function getCalendarAuth(userId: string) {
+  return getGoogleAuth(userId, calendarScope, "Calendar");
+}
+
+export function getTasksAuth(userId: string) {
+  return getGoogleAuth(userId, tasksScope, "Tasks");
 }

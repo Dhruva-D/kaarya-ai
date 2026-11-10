@@ -16,14 +16,27 @@ export const calendarActionSchema = z.strictObject({
   args: calendarArgs,
 });
 
+const taskArgs = z.strictObject({
+  title: z.string().trim().min(1).max(200),
+  notes: z.string().trim().max(1_000).optional(),
+  dueDate: z.iso.date().optional(),
+});
+
+export const taskActionSchema = z.strictObject({
+  tool: z.literal("tasks.create_task"),
+  args: taskArgs,
+});
+
+export const proposedActionSchema = z.discriminatedUnion("tool", [calendarActionSchema, taskActionSchema]);
+
 export const proposalSchema = z.strictObject({
   kind: z.enum(["action_plan", "needs_clarification", "unsupported"]),
   assistantMessage: z.string().trim().min(1).max(500),
   questions: z.array(z.string().trim().min(1).max(200)).max(3),
-  actions: z.array(calendarActionSchema).max(1),
+  actions: z.array(proposedActionSchema).max(1),
 }).superRefine((value, ctx) => {
   if (value.kind === "action_plan" && value.actions.length !== 1) {
-    ctx.addIssue({ code: "custom", message: "An action plan requires one Calendar action" });
+    ctx.addIssue({ code: "custom", message: "An action plan requires one action" });
   }
   if (value.kind !== "action_plan" && value.actions.length !== 0) {
     ctx.addIssue({ code: "custom", message: "Only action plans may include actions" });
@@ -48,7 +61,7 @@ export const providerProposalSchema = {
       items: {
         type: "object",
         properties: {
-          tool: { type: "string", enum: ["calendar.create_event"] },
+          tool: { type: "string", enum: ["calendar.create_event", "tasks.create_task"] },
           args: {
             type: "object",
             properties: {
@@ -58,8 +71,10 @@ export const providerProposalSchema = {
               timezone: { type: "string" },
               attendees: { type: "array", maxItems: 3, items: { type: "string" } },
               addMeet: { type: "boolean" },
+              notes: { type: "string" },
+              dueDate: { type: "string" },
             },
-            required: ["title", "startIso", "endIso", "timezone"],
+            required: ["title"],
           },
         },
         required: ["tool", "args"],

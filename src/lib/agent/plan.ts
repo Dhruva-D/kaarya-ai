@@ -11,13 +11,15 @@ export const approvalInputSchema = z.strictObject({
 
 export type ApprovalInput = z.infer<typeof approvalInputSchema>;
 export type CalendarAction = Extract<Proposal["actions"][number], { tool: "calendar.create_event" }>;
+export type TaskAction = Extract<Proposal["actions"][number], { tool: "tasks.create_task" }>;
+export type ProposedAction = CalendarAction | TaskAction;
 
 export function isApprovalPreviewLive(status: string, expiresAt: string, now = Date.now()): boolean {
   const expiry = Date.parse(expiresAt);
   return status === "awaiting_approval" && Number.isFinite(expiry) && expiry > now;
 }
 
-export function canonicalActionHash(action: CalendarAction): string {
+export function canonicalActionHash(action: ProposedAction): string {
   return createHash("sha256").update(JSON.stringify(action)).digest("hex");
 }
 

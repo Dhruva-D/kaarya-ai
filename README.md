@@ -17,7 +17,8 @@ Kaarya AI is a voice-first, human-approved productivity assistant. Phase 1 takes
 - Approved Calendar execution route and encrypted credential loading: one user-approved, guest-free synthetic event was created on the connected test account, with a stored Google event ID and the event observed in Google Calendar. Duplicate and foreign-user claims of the same completed plan were rejected in a live database check. Expired previews close in the UI; the server also rejects stale approvals.
 - Typed chat and exact Calendar review UI: signed-in desktop and narrow mobile layout inspected; the mobile view showed no horizontal overflow.
 - Gnani Timbre v2.5 voice output: an authenticated, bounded WAV route and manual "Play voice reply" control are implemented. Synthetic English and Kannada provider requests returned real WAV; signed-in English browser playback control completed. Detected speech language is saved with new messages and selects a documented voice. Kannada end-to-end browser playback and automatic playback remain open.
-- Tasks and Gmail: not implemented.
+- Google Tasks: typed or transcribed requests can produce a persisted, exact approval preview. The server validates title and date-only behavior, and the Google adapter targets the authenticated account's default task list. Local adapter/approval tests and a live Gemini plus signed-in UI preview passed. The Tasks API/scope and a real provider receipt are still pending, so do not claim the integration works end to end yet.
+- Gmail send: not implemented.
 
 This is a locally verified Phase 1 slice, not a deployed service. Full cross-user HTTP testing with a second account and deployment remain open.
 

@@ -13,6 +13,14 @@ const review: Record<SpeechLanguage, string> = {
   "te-IN": "ఈవెంట్‌ను సృష్టించే ముందు వివరాలను పరిశీలించండి.",
 };
 
+const taskReview: Record<SpeechLanguage, string> = {
+  "bn-IN": "তৈরি করার আগে টাস্কের বিবরণ দেখে নিন।", "en-IN": "Please review this task before I create it.",
+  "gu-IN": "ટાસ્ક બનાવતા પહેલાં તેની વિગતો તપાસો.", "hi-IN": "टास्क बनाने से पहले उसकी जानकारी जाँच लें।",
+  "kn-IN": "ಕಾರ್ಯವನ್ನು ರಚಿಸುವ ಮೊದಲು ಅದರ ವಿವರಗಳನ್ನು ಪರಿಶೀಲಿಸಿ.", "ml-IN": "ടാസ്ക് സൃഷ്ടിക്കുന്നതിന് മുമ്പ് വിശദാംശങ്ങൾ പരിശോധിക്കുക.",
+  "mr-IN": "टास्क तयार करण्यापूर्वी त्याचे तपशील तपासा.", "pa-IN": "ਟਾਸਕ ਬਣਾਉਣ ਤੋਂ ਪਹਿਲਾਂ ਇਸ ਦੇ ਵੇਰਵੇ ਜਾਂਚ ਲਵੋ।",
+  "ta-IN": "பணியை உருவாக்கும் முன் அதன் விவரங்களைச் சரிபார்க்கவும்.", "te-IN": "టాస్క్‌ను సృష్టించే ముందు వివరాలను పరిశీలించండి.",
+};
+
 const unsupported: Record<SpeechLanguage, string> = {
   "bn-IN": "এখন আমি শুধু ক্যালেন্ডার ইভেন্টে সাহায্য করতে পারি।",
   "en-IN": "I can only help with Calendar events right now.",
@@ -26,6 +34,6 @@ const unsupported: Record<SpeechLanguage, string> = {
   "te-IN": "ప్రస్తుతం నేను క్యాలెండర్ ఈవెంట్‌లకు మాత్రమే సహాయం చేయగలను.",
 };
 
-export function replyCopy(kind: "review" | "unsupported", language?: SpeechLanguage): string {
-  return (kind === "review" ? review : unsupported)[language ?? "en-IN"];
+export function replyCopy(kind: "review" | "task_review" | "unsupported", language?: SpeechLanguage): string {
+  return (kind === "review" ? review : kind === "task_review" ? taskReview : unsupported)[language ?? "en-IN"];
 }

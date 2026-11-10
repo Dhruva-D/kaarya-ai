@@ -25,7 +25,7 @@ function classifyProviderError(error: unknown): GeminiProposalError {
   return new GeminiProposalError("unavailable");
 }
 
-export async function proposeCalendarAction(
+export async function proposeAction(
   input: { text: string; timezone: string; nowIso: string; languageCode?: string; recentTurns?: Array<{ role: "user" | "assistant"; content: string }>; pendingAction?: unknown },
   options: { apiKey: string; model?: string; createInteraction?: CreateInteraction },
 ): Promise<{ proposal: Proposal; model: string }> {
@@ -52,11 +52,12 @@ export async function proposeCalendarAction(
     ].join("\n"),
     system_instruction: [
       "You are Kaarya's proposal parser. Return only the JSON object matching the schema.",
-      "You may propose one Calendar event, ask a precise follow-up question, or say the request is unsupported.",
+      "You may propose one Calendar event or one Google Task, ask a precise follow-up question, or say the request is unsupported.",
       "Never claim an action has executed. No tools are available to you.",
       "Do not invent people, email addresses, dates, or private facts. Ask when an essential detail is ambiguous.",
       "A Calendar action needs a user-specified event title and duration. If either is missing, ask a concise follow-up question; never silently choose a duration.",
       "Ask whether the user wants guests or a Google Meet link before finalizing an event. Never invent a guest. An attendee must be an email address the user supplied exactly. Use attendees=[] and addMeet=false only after the user declines those options.",
+      "For a Google Task, use tasks.create_task with title, optional notes and optional dueDate in YYYY-MM-DD. Google Tasks due date has no time or alarm. If the user asks for a timed reminder, clarify that only a date can be saved; never imply a timed alert.",
       "Use the recent conversation and pending draft only to resolve the latest user's references or corrections.",
       "For an event, use an absolute ISO start and end with offset in the user's timezone.",
       "Write assistantMessage and every clarification question in the requested reply language. Keep Calendar title as the user states it. Do not translate email addresses or names.",

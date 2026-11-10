@@ -15,7 +15,15 @@ export function approvalClaimPredicate(planId: string, userId: string, input: Ap
 }
 
 /** A null result means unowned, stale, expired, rejected, or already claimed. */
-export async function claimCalendarPlan(planId: string, userId: string, input: ApprovalInput) {
+export async function getOwnedPendingActionType(planId: string, userId: string) {
+  const [row] = await getDb().select({ type: actions.type }).from(actionPlans)
+    .innerJoin(actions, and(eq(actions.planId, actionPlans.id), eq(actions.userId, actionPlans.userId)))
+    .where(and(eq(actionPlans.id, planId), eq(actionPlans.userId, userId), eq(actionPlans.status, "awaiting_approval")))
+    .limit(1);
+  return row?.type ?? null;
+}
+
+export async function claimActionPlan(planId: string, userId: string, input: ApprovalInput) {
   return getDb().transaction(async (tx) => {
     const [plan] = await tx.update(actionPlans)
       .set({ status: "executing", approvedAt: new Date(), approvalUserId: userId, approvalEventId: input.clientRequestId })

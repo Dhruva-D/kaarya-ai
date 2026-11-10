@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { safeCalendarEventLink, toCalendarHistoryItem } from "./action-history";
+import { safeCalendarEventLink, toCalendarHistoryItem, toTaskHistoryItem } from "./action-history";
 
 const valid = {
   planId: "11111111-1111-4111-8111-111111111111",
@@ -22,6 +22,12 @@ describe("Calendar history projection", () => {
     expect(toCalendarHistoryItem({ ...valid, args: { ...valid.args, recipient: "private@example.com" } })).toBeNull();
     expect(toCalendarHistoryItem({ ...valid, args: { ...valid.args, timezone: "not-a-timezone" } })).toBeNull();
     expect(toCalendarHistoryItem({ ...valid, providerLink: "javascript:alert(1)" })?.providerLink).toBeNull();
+  });
+
+  it("keeps only safe Google Tasks receipts", () => {
+    const row = { planId: "plan", status: "succeeded" as const, type: "tasks.create_task", args: { title: "Prepare synthetic demo", dueDate: "2026-11-11" }, providerObjectId: "task-id", providerLink: "https://tasks.google.com/task/123" };
+    expect(toTaskHistoryItem(row)).toMatchObject({ tool: "tasks.create_task", title: "Prepare synthetic demo", providerLink: row.providerLink });
+    expect(toTaskHistoryItem({ ...row, providerLink: "javascript:alert(1)" })?.providerLink).toBeNull();
   });
 
   it("rejects unrelated hosts and plaintext links", () => {

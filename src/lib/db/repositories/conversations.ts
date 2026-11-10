@@ -1,5 +1,5 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
-import { toCalendarHistoryItem } from "../../agent/action-history";
+import { toCalendarHistoryItem, toTaskHistoryItem } from "../../agent/action-history";
 import { getDb } from "../client";
 import { actionPlans, actions, conversations, messages } from "../schema";
 
@@ -48,7 +48,7 @@ export async function getOwnedConversation(userId: string, id: string) {
     } : null,
     history: historyRows.flatMap((row) => {
       if (row.status !== "succeeded" && row.status !== "failed" && row.status !== "unknown") return [];
-      const item = toCalendarHistoryItem({ ...row, status: row.status });
+      const item = row.type === "tasks.create_task" ? toTaskHistoryItem({ ...row, status: row.status }) : toCalendarHistoryItem({ ...row, status: row.status });
       return item ? [item] : [];
     }),
   };

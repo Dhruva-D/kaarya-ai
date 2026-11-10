@@ -2,12 +2,14 @@ import { randomUUID } from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "../db/client";
 import { actionPlans, actions, conversations, messages, profiles } from "../db/schema";
-import { proposeCalendarAction } from "../integrations/gemini/planner";
+import { proposeAction } from "../integrations/gemini/planner";
 import { canonicalActionHash, validateCalendarProposal } from "./plan";
 import type { ChatRequest } from "./chat-request";
 import { replyCopy } from "./reply-copy";
 import { calendarDetailQuestion, missingCalendarDetails } from "./calendar-slots";
 import { calendarPreferenceQuestion, calendarPreferencesNeedConfirmation } from "./calendar-preferences";
+import { validateTaskProposal } from "./task-plan";
+import { missingTaskDetails, taskDetailQuestion } from "./task-slots";
 
 export class ConversationNotFound extends Error {}
 export class UnsafeProposal extends Error {}
@@ -30,7 +32,7 @@ export async function handleChat(userId: string, request: ChatRequest) {
     .orderBy(desc(actionPlans.createdAt)).limit(1) : [];
   const [pendingAction] = pendingPlan ? await db.select({ type: actions.type, args: actions.argumentsJson }).from(actions)
     .where(and(eq(actions.planId, pendingPlan.id), eq(actions.userId, userId))).limit(1) : [];
-  const { proposal, model } = await proposeCalendarAction(
+  const { proposal, model } = await proposeAction(
     {
       text: request.text, timezone, nowIso: new Date().toISOString(), languageCode: request.languageCode,
       recentTurns: recent.reverse().map((turn) => ({ role: turn.role, content: turn.content.slice(0, 1_000) })),
@@ -40,22 +42,26 @@ export async function handleChat(userId: string, request: ChatRequest) {
   );
   let action = proposal.kind === "action_plan" ? proposal.actions[0] : undefined;
   const userTurns = [...recent.filter((turn) => turn.role === "user").map((turn) => turn.content), request.text];
-  const missingDetails = action ? missingCalendarDetails(userTurns, action.args.title) : [];
-  const missingPreferences = action && !missingDetails.length ? calendarPreferencesNeedConfirmation(userTurns, action) : false;
-  if (missingDetails.length || missingPreferences) action = undefined;
+  const missingDetails = action?.tool === "calendar.create_event" ? missingCalendarDetails(userTurns, action.args.title) : [];
+  const missingTask = action?.tool === "tasks.create_task" ? missingTaskDetails(userTurns, action) : [];
+  const missingPreferences = action?.tool === "calendar.create_event" && !missingDetails.length ? calendarPreferencesNeedConfirmation(userTurns, action) : false;
+  if (missingDetails.length || missingTask.length || missingPreferences) action = undefined;
   if (action) {
     try {
-      validateCalendarProposal(action, timezone, new Date(), userTurns);
+      if (action.tool === "calendar.create_event") validateCalendarProposal(action, timezone, new Date(), userTurns);
+      else validateTaskProposal(action);
     } catch {
       throw new UnsafeProposal("The proposed event needs clarification before it can be reviewed");
     }
   }
   const assistantText = missingDetails.length
     ? calendarDetailQuestion(missingDetails, request.languageCode)
+    : missingTask.length
+      ? taskDetailQuestion(missingTask, request.languageCode)
     : missingPreferences
       ? calendarPreferenceQuestion(request.languageCode)
     : action
-    ? replyCopy("review", request.languageCode)
+    ? replyCopy(action.tool === "tasks.create_task" ? "task_review" : "review", request.languageCode)
     : proposal.kind === "needs_clarification"
       ? proposal.questions.join(" ")
       : replyCopy("unsupported", request.languageCode);
@@ -85,8 +91,8 @@ export async function handleChat(userId: string, request: ChatRequest) {
   return {
     conversationId,
     assistantText,
-    resultType: missingDetails.length || missingPreferences ? "needs_clarification" : proposal.kind,
-    questions: missingDetails.length || missingPreferences ? [assistantText] : proposal.questions,
+    resultType: missingDetails.length || missingTask.length || missingPreferences ? "needs_clarification" : proposal.kind,
+    questions: missingDetails.length || missingTask.length || missingPreferences ? [assistantText] : proposal.questions,
     plan: action && planId && canonicalHash ? { id: planId, version: 1, canonicalHash, action } : null,
   };
 }
