@@ -13,7 +13,7 @@ export async function getOwnedConversation(userId: string, id: string) {
   const [conversation] = await db.select({ id: conversations.id, title: conversations.title })
     .from(conversations).where(and(eq(conversations.id, id), eq(conversations.userId, userId))).limit(1);
   if (!conversation) return null;
-  const turns = await db.select({ id: messages.id, role: messages.role, content: messages.content, createdAt: messages.createdAt })
+  const turns = await db.select({ id: messages.id, role: messages.role, content: messages.content, languageCode: messages.languageCode, createdAt: messages.createdAt })
     .from(messages).where(and(eq(messages.conversationId, id), eq(messages.userId, userId)))
     .orderBy(messages.createdAt).limit(100);
   const [plan] = await db.select().from(actionPlans)

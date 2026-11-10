@@ -5,6 +5,7 @@ import { actionPlans, actions, conversations, messages, profiles } from "../db/s
 import { proposeCalendarAction } from "../integrations/gemini/planner";
 import { canonicalActionHash, validateCalendarProposal } from "./plan";
 import type { ChatRequest } from "./chat-request";
+import { replyCopy } from "./reply-copy";
 
 export class ConversationNotFound extends Error {}
 export class UnsafeProposal extends Error {}
@@ -29,7 +30,7 @@ export async function handleChat(userId: string, request: ChatRequest) {
     .where(and(eq(actions.planId, pendingPlan.id), eq(actions.userId, userId))).limit(1) : [];
   const { proposal, model } = await proposeCalendarAction(
     {
-      text: request.text, timezone, nowIso: new Date().toISOString(),
+      text: request.text, timezone, nowIso: new Date().toISOString(), languageCode: request.languageCode,
       recentTurns: recent.reverse().map((turn) => ({ role: turn.role, content: turn.content.slice(0, 1_000) })),
       pendingAction: pendingAction ? { tool: pendingAction.type, args: pendingAction.args } : undefined,
     },
@@ -44,10 +45,10 @@ export async function handleChat(userId: string, request: ChatRequest) {
     }
   }
   const assistantText = action
-    ? "Please review this event before I create it."
+    ? replyCopy("review", request.languageCode)
     : proposal.kind === "needs_clarification"
-      ? `I need a little more detail before I can prepare the event. ${proposal.questions.join(" ")}`
-      : "I can only help create Calendar events right now.";
+      ? proposal.questions.join(" ")
+      : replyCopy("unsupported", request.languageCode);
   const planId = action ? randomUUID() : undefined;
   const actionId = action ? randomUUID() : undefined;
   const canonicalHash = action ? canonicalActionHash(action) : undefined;
@@ -60,8 +61,8 @@ export async function handleChat(userId: string, request: ChatRequest) {
     }
     await tx.update(actionPlans).set({ status: "superseded" })
       .where(and(eq(actionPlans.conversationId, currentId), eq(actionPlans.userId, userId), eq(actionPlans.status, "awaiting_approval")));
-    await tx.insert(messages).values({ conversationId: currentId, userId, role: "user", content: request.text, inputMode: request.inputMode, clientRequestId: request.clientRequestId });
-    await tx.insert(messages).values({ conversationId: currentId, userId, role: "assistant", content: assistantText, providerModel: model });
+    await tx.insert(messages).values({ conversationId: currentId, userId, role: "user", content: request.text, inputMode: request.inputMode, languageCode: request.languageCode ?? "en-IN", clientRequestId: request.clientRequestId });
+    await tx.insert(messages).values({ conversationId: currentId, userId, role: "assistant", content: assistantText, languageCode: request.languageCode ?? "en-IN", providerModel: model });
     await tx.update(conversations).set({ updatedAt: new Date() })
       .where(and(eq(conversations.id, currentId), eq(conversations.userId, userId)));
     if (action && planId && actionId && canonicalHash) {

@@ -1,0 +1,1 @@
+ALTER TABLE "messages" ADD COLUMN "language_code" varchar(16);

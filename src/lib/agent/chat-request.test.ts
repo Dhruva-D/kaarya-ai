@@ -7,5 +7,7 @@ describe("chat request", () => {
     expect(chatRequestSchema.safeParse(valid).success).toBe(true);
     expect(chatRequestSchema.safeParse({ ...valid, userId: "another-user" }).success).toBe(false);
     expect(chatRequestSchema.safeParse({ ...valid, text: "x".repeat(2_001) }).success).toBe(false);
+    expect(chatRequestSchema.safeParse({ ...valid, inputMode: "voice", languageCode: "kn-IN" }).success).toBe(true);
+    expect(chatRequestSchema.safeParse({ ...valid, inputMode: "voice", languageCode: "auto" }).success).toBe(false);
   });
 });

@@ -1,5 +1,5 @@
 export type ConversationSummary = { id: string; title: string; updatedAt: string };
-export type Turn = { id: string; role: "user" | "assistant"; content: string; createdAt: string };
+export type Turn = { id: string; role: "user" | "assistant"; content: string; languageCode: string | null; createdAt: string };
 export type CalendarPlan = {
   id: string;
   version: number;

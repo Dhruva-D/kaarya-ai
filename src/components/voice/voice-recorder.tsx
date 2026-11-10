@@ -7,7 +7,7 @@ import { readApiError } from "@/components/chat/types";
 type VoiceState = "idle" | "recording" | "processing" | "transcribing";
 const languageNames: Record<string, string> = { "bn-IN": "Bengali", "en-IN": "English", "gu-IN": "Gujarati", "hi-IN": "Hindi", "kn-IN": "Kannada", "ml-IN": "Malayalam", "mr-IN": "Marathi", "pa-IN": "Punjabi", "ta-IN": "Tamil", "te-IN": "Telugu" };
 
-export function VoiceRecorder({ onTranscript }: { onTranscript: (text: string) => void }) {
+export function VoiceRecorder({ onTranscript }: { onTranscript: (text: string, languageCode: string) => void }) {
   const [state, setState] = useState<VoiceState>("idle");
   const [seconds, setSeconds] = useState(0);
   const [detectedLanguage, setDetectedLanguage] = useState<string | null>(null);
@@ -42,7 +42,7 @@ export function VoiceRecorder({ onTranscript }: { onTranscript: (text: string) =
       const result = await response.json() as { transcript: string; model: string; detectedLanguageCode: string };
       if (!result.transcript.trim() || result.model !== "prisma-v3.0" || !languageNames[result.detectedLanguageCode]) throw new Error("Gnani did not return a valid transcript");
       setDetectedLanguage(languageNames[result.detectedLanguageCode]);
-      onTranscript(result.transcript);
+      onTranscript(result.transcript, result.detectedLanguageCode);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Voice transcription failed. You can type instead.");
     } finally {

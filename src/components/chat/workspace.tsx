@@ -57,13 +57,13 @@ export function Workspace({ signOutControl, voiceAvailable }: { signOutControl: 
     try { await loadDetail(id); } catch (cause) { setError(cause instanceof Error ? cause.message : "Conversation could not be loaded"); }
   }
 
-  async function send(text: string): Promise<boolean> {
+  async function send(text: string, languageCode?: string): Promise<boolean> {
     setBusy(true);
     setError(null);
     try {
       const response = await fetch("/api/chat", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversationId: activeId ?? undefined, text, inputMode: "text", clientRequestId: crypto.randomUUID() }),
+        body: JSON.stringify({ conversationId: activeId ?? undefined, text, inputMode: languageCode ? "voice" : "text", languageCode, clientRequestId: crypto.randomUUID() }),
       });
       if (!response.ok) throw new Error(await readApiError(response));
       const result = await response.json() as { conversationId: string };

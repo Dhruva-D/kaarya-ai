@@ -95,6 +95,7 @@ export const messages = pgTable("messages", {
   role: messageRole("role").notNull(),
   content: varchar("content", { length: 4_000 }).notNull(),
   inputMode: varchar("input_mode", { length: 16 }),
+  languageCode: varchar("language_code", { length: 16 }),
   providerModel: varchar("provider_model", { length: 80 }),
   clientRequestId: uuid("client_request_id"),
   createdAt: time("created_at").notNull().defaultNow(),

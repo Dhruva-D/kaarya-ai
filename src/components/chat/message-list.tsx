@@ -16,7 +16,7 @@ export function MessageList({ messages, busy, voiceAvailable }: { messages: Turn
     try {
       const response = await fetch("/api/speech/synthesize", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: message.content.slice(0, 500), language: "en-IN" }),
+        body: JSON.stringify({ text: message.content.slice(0, 500), language: message.languageCode ?? "en-IN" }),
       });
       if (!response.ok) throw new Error(await readApiError(response));
       const url = URL.createObjectURL(await response.blob());

@@ -36,6 +36,13 @@
       "when": 1794243595756,
       "tag": "0004_stale_diamondback",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794299038780,
+      "tag": "0005_unique_sugar_man",
+      "breakpoints": true
     }
   ]
 }
