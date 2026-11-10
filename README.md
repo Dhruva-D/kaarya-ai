@@ -6,7 +6,7 @@ Kaarya AI is a voice-first, human-approved productivity assistant. Phase 1 takes
 
 - Next.js, TypeScript, Tailwind CSS and shadcn/ui foundation: scaffolded and checked locally.
 - Gnani Prisma v2.5 browser recorder, WAV encoder, authenticated transcription route and editable transcript: a short synthetic WAV produced a real provider transcript, and a browser microphone recording returned HTTP 200 with editable transcript text. Typed fallback remains available.
-- Gemini Calendar proposal adapter: strict Zod contract tests and a real `gemini-3.6-flash` structured proposal verified.
+- Gemini Calendar proposal adapter: strict Zod contract tests and real `gemini-3.6-flash` structured proposals verified. When that model reaches its project quota, a real `gemini-3.5-flash-lite` structured proposal is used as the bounded fallback; this was verified in the signed-in UI.
 - Drizzle/Postgres schema and checked-in migrations: applied to a Supabase test database.
 - Auth.js Google sign-in and encrypted token vault: live sign-in verified; account token columns were empty and connection tokens encrypted at rest.
 - Authenticated typed chat route and owned Calendar plan persistence: live typed request and review verified. Recent completed actions remain visible when a newer plan is pending in the same conversation.
@@ -37,7 +37,7 @@ To test Gnani after adding a key, record a **synthetic**, spoken mono 16-bit PCM
 
 To check model access with a synthetic Calendar request, run `npm run smoke:gemini` after adding `GEMINI_API_KEY`. This prints a proposal, not a Google write.
 
-If chat reports `GEMINI_RATE_LIMITED`, the connected Gemini project has reached a current provider limit. The unsent message remains editable in the composer. Check the project's **Usage** and **Rate Limit** pages in Google AI Studio, then retry when capacity is available. This error does not create a Calendar event; do not repeatedly run smoke tests while the limit is active.
+If chat reports `GEMINI_RATE_LIMITED`, both the primary and fallback model are unavailable under the connected project's current limits. The unsent message remains editable in the composer. Check the project's **Usage** and **Rate Limit** pages in Google AI Studio, then retry when capacity is available. This error does not create a Calendar event; do not repeatedly run smoke tests while the limit is active.
 
 Never commit `.env.local`, provider keys, OAuth tokens, private messages or real recordings.
 

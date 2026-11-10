@@ -41,8 +41,7 @@ export async function proposeCalendarAction(
   const model = options.model ?? "gemini-3.6-flash";
   const client = options.createInteraction ? undefined : new GoogleGenAI({ apiKey: options.apiKey });
   const create = options.createInteraction ?? ((params, requestOptions) => client!.interactions.create(params, requestOptions));
-  const result = await create({
-    model,
+  const request = {
     input: [
       `Current time: ${input.nowIso}`,
       `User timezone: ${input.timezone}`,
@@ -60,10 +59,22 @@ export async function proposeCalendarAction(
     ].join(" "),
     response_format: { type: "text", mime_type: "application/json", schema: providerProposalSchema },
     store: false,
-  }, {
+  } as const;
+  const requestOptions: InteractionRequestOptions = {
     retries: { strategy: "attempt-count-backoff", maxRetries: 1 },
     retry_codes: ["408", "5XX"],
-  }).catch((error: unknown) => { throw classifyProviderError(error); });
+  };
+  const createForModel = (selectedModel: string) => create({ ...request, model: selectedModel }, requestOptions)
+    .catch((error: unknown) => { throw classifyProviderError(error); });
+  let selectedModel = model;
+  let result: InteractionResult;
+  try {
+    result = await createForModel(selectedModel);
+  } catch (error) {
+    if (!(error instanceof GeminiProposalError) || error.reason !== "rate_limited" || model !== "gemini-3.6-flash") throw error;
+    selectedModel = "gemini-3.5-flash-lite";
+    result = await createForModel(selectedModel);
+  }
   if (result.status !== "completed" || !result.output_text) {
     throw new GeminiProposalError("invalid_response");
   }
@@ -75,5 +86,5 @@ export async function proposeCalendarAction(
   }
   const proposal = proposalSchema.safeParse(parsed);
   if (!proposal.success) throw new GeminiProposalError("invalid_response");
-  return { proposal: proposal.data, model: result.model ?? model };
+  return { proposal: proposal.data, model: result.model ?? selectedModel };
 }

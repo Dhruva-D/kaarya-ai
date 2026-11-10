@@ -41,4 +41,15 @@ describe("Gemini proposal adapter", () => {
     const createInteraction = async () => { throw Object.assign(new Error("provider detail"), { status: 503 }); };
     await expect(proposeCalendarAction(input, { apiKey: "test-key", createInteraction })).rejects.toEqual(new GeminiProposalError("busy"));
   });
+
+  it("uses the verified Flash-Lite fallback only when the primary model reaches its limit", async () => {
+    const createInteraction = vi.fn(async (params) => {
+      if (params.model === "gemini-3.6-flash") throw Object.assign(new Error("quota details"), { status: 429 });
+      return { status: "completed", output_text: JSON.stringify({ kind: "action_plan", assistantMessage: "Review this event.", questions: [], actions: [action] }) };
+    });
+    const result = await proposeCalendarAction(input, { apiKey: "test-key", createInteraction });
+    expect(createInteraction.mock.calls.map(([params]) => params.model)).toEqual(["gemini-3.6-flash", "gemini-3.5-flash-lite"]);
+    expect(result.model).toBe("gemini-3.5-flash-lite");
+    expect(result.proposal.actions).toEqual([action]);
+  });
 });
