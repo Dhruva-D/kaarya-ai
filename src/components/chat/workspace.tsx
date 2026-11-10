@@ -13,6 +13,7 @@ export function Workspace({ signOutControl, voiceAvailable }: { signOutControl: 
   const [detail, setDetail] = useState<ConversationDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [decisionBusy, setDecisionBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -83,6 +84,7 @@ export function Workspace({ signOutControl, voiceAvailable }: { signOutControl: 
     if (!detail?.plan || busy) return;
     const plan = detail.plan;
     setBusy(true);
+    setDecisionBusy(true);
     setError(null);
     try {
       const response = await fetch(`/api/plans/${plan.id}/${kind}`, {
@@ -99,6 +101,7 @@ export function Workspace({ signOutControl, voiceAvailable }: { signOutControl: 
       await loadDetail(detail.id).catch(() => undefined);
     } finally {
       setBusy(false);
+      setDecisionBusy(false);
     }
   }
 
@@ -128,7 +131,7 @@ export function Workspace({ signOutControl, voiceAvailable }: { signOutControl: 
         </div>
       </section>
 
-      {hasSidePanel && <aside className="min-w-0 border-t border-[#E3E7E3] bg-[#F6F6F3] p-5 lg:border-l lg:border-t-0 lg:p-6" aria-label="Action review"><div className="lg:sticky lg:top-6">{plan && <ActionReview busy={busy} key={plan.id} onApprove={() => decide("approve")} onReject={() => decide("reject")} plan={plan} />}<ActionHistory items={history} /></div></aside>}
+      {hasSidePanel && <aside className="min-w-0 border-t border-[#E3E7E3] bg-[#F6F6F3] p-5 lg:border-l lg:border-t-0 lg:p-6" aria-label="Action review"><div className="lg:sticky lg:top-6">{plan && <ActionReview busy={busy} creating={decisionBusy} key={plan.id} onApprove={() => decide("approve")} onReject={() => decide("reject")} plan={plan} />}<ActionHistory items={history} /></div></aside>}
     </div>
   );
 }

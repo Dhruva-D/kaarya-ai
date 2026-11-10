@@ -7,6 +7,7 @@ import { canonicalActionHash, validateCalendarProposal } from "./plan";
 import type { ChatRequest } from "./chat-request";
 import { replyCopy } from "./reply-copy";
 import { calendarDetailQuestion, missingCalendarDetails } from "./calendar-slots";
+import { calendarPreferenceQuestion, calendarPreferencesNeedConfirmation } from "./calendar-preferences";
 
 export class ConversationNotFound extends Error {}
 export class UnsafeProposal extends Error {}
@@ -40,7 +41,8 @@ export async function handleChat(userId: string, request: ChatRequest) {
   let action = proposal.kind === "action_plan" ? proposal.actions[0] : undefined;
   const userTurns = [...recent.filter((turn) => turn.role === "user").map((turn) => turn.content), request.text];
   const missingDetails = action ? missingCalendarDetails(userTurns, action.args.title) : [];
-  if (missingDetails.length) action = undefined;
+  const missingPreferences = action && !missingDetails.length ? calendarPreferencesNeedConfirmation(userTurns, action) : false;
+  if (missingDetails.length || missingPreferences) action = undefined;
   if (action) {
     try {
       validateCalendarProposal(action, timezone, new Date(), userTurns);
@@ -50,6 +52,8 @@ export async function handleChat(userId: string, request: ChatRequest) {
   }
   const assistantText = missingDetails.length
     ? calendarDetailQuestion(missingDetails, request.languageCode)
+    : missingPreferences
+      ? calendarPreferenceQuestion(request.languageCode)
     : action
     ? replyCopy("review", request.languageCode)
     : proposal.kind === "needs_clarification"
@@ -81,8 +85,8 @@ export async function handleChat(userId: string, request: ChatRequest) {
   return {
     conversationId,
     assistantText,
-    resultType: missingDetails.length ? "needs_clarification" : proposal.kind,
-    questions: missingDetails.length ? [assistantText] : proposal.questions,
+    resultType: missingDetails.length || missingPreferences ? "needs_clarification" : proposal.kind,
+    questions: missingDetails.length || missingPreferences ? [assistantText] : proposal.questions,
     plan: action && planId && canonicalHash ? { id: planId, version: 1, canonicalHash, action } : null,
   };
 }

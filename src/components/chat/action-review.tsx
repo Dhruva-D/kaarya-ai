@@ -12,9 +12,10 @@ function formatWhen(iso: string, timezone: string): string {
   }
 }
 
-export function ActionReview({ plan, busy, onApprove, onReject }: {
+export function ActionReview({ plan, busy, creating, onApprove, onReject }: {
   plan: CalendarPlan;
   busy: boolean;
+  creating: boolean;
   onApprove: () => Promise<void>;
   onReject: () => Promise<void>;
 }) {
@@ -41,7 +42,7 @@ export function ActionReview({ plan, busy, onApprove, onReject }: {
         <div><dt className="font-medium text-[#5A6664]">Google Meet</dt><dd className="mt-1">{plan.action.args.addMeet ? "Request a new link" : "No Meet link"}</dd></div>
       </dl>
       {pending && <div className="mt-5 flex flex-wrap gap-3">
-        <button className="min-h-11 rounded-[10px] bg-[#166B61] px-4 text-sm font-semibold text-white hover:bg-[#10564F] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#166B61] disabled:opacity-50" disabled={busy} onClick={onApprove} type="button">{busy ? "Creating event…" : "Approve and create"}</button>
+        <button className="min-h-11 rounded-[10px] bg-[#166B61] px-4 text-sm font-semibold text-white hover:bg-[#10564F] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#166B61] disabled:opacity-50" disabled={busy} onClick={onApprove} type="button">{creating ? "Creating event…" : "Approve and create"}</button>
         <button className="min-h-11 rounded-[10px] border border-[#CBD6D2] px-4 text-sm font-medium hover:bg-[#F6F6F3] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#166B61] disabled:opacity-50" disabled={busy} onClick={onReject} type="button">Cancel</button>
       </div>}
       {plan.status === "succeeded" && plan.receipt.providerObjectId && <div className="mt-5 text-sm text-[#246B4B]"><p className="font-semibold">Event created</p><p className="mt-1 break-all">Google event ID: {plan.receipt.providerObjectId}</p>{plan.receipt.providerLink && <a className="mt-2 inline-block underline underline-offset-4" href={plan.receipt.providerLink} rel="noopener noreferrer" target="_blank">Open in Google Calendar</a>}{plan.action.args.addMeet && <p className="mt-2">{plan.receipt.meetStatus === "confirmed" && plan.receipt.meetLink ? <a href={plan.receipt.meetLink} rel="noopener noreferrer" target="_blank" className="underline underline-offset-4">Open Google Meet</a> : plan.receipt.meetStatus === "failed" ? "Google Meet was not created. Check Calendar before sharing this event." : "Google Meet is not confirmed yet. Check Calendar for its status."}</p>}</div>}
