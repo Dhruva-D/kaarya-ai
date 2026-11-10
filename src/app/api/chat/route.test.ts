@@ -49,4 +49,11 @@ describe("chat provider failures", () => {
     expect(response.status).toBe(502);
     expect(await response.json()).toMatchObject({ code: "GEMINI_INVALID_RESPONSE" });
   });
+
+  it("reports the provider request limit as 429", async () => {
+    mocks.handleChat.mockRejectedValue(new GeminiProposalError("rate_limited"));
+    const response = await POST(request());
+    expect(response.status).toBe(429);
+    expect(await response.json()).toMatchObject({ code: "GEMINI_RATE_LIMITED", message: expect.stringContaining("Google AI Studio") });
+  });
 });

@@ -6,13 +6,15 @@ const action = { tool: "calendar.create_event", args: { title: "Project meeting"
 
 describe("Gemini proposal adapter", () => {
   it("requests schema-bound JSON without tools or stored provider context", async () => {
-    const createInteraction = vi.fn(async (params) => {
+    const createInteraction = vi.fn(async (params, requestOptions) => {
       expect(params.model).toBe("gemini-3.6-flash");
       expect(params.store).toBe(false);
       expect(params.response_format.mime_type).toBe("application/json");
       expect(params.input).toContain("Asia/Kolkata");
       expect(params.input).toContain("What time?");
       expect(params.input).toContain("Current pending Calendar draft");
+      expect(requestOptions.retry_codes).not.toContain("429");
+      expect(requestOptions.retries.maxRetries).toBe(1);
       return { status: "completed", output_text: JSON.stringify({ kind: "action_plan", assistantMessage: "Review this event.", questions: [], actions: [action] }) };
     });
     const result = await proposeCalendarAction({ ...input, recentTurns: [{ role: "assistant", content: "What time?" }], pendingAction: action }, { apiKey: "test-key", createInteraction });

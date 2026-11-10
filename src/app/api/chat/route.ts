@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       console.warn("Gemini proposal failed", { reason: error.reason });
       const responses = {
         busy: { status: 503, code: "GEMINI_BUSY", message: "Gemini is temporarily busy. Your message is still here; please try Send again in a moment." },
-        rate_limited: { status: 503, code: "GEMINI_RATE_LIMITED", message: "Gemini is limiting requests right now. Your message is still here; please try again shortly." },
+        rate_limited: { status: 429, code: "GEMINI_RATE_LIMITED", message: "Gemini has reached its current request limit. Your message is still here. Try again later, or check usage in Google AI Studio." },
         configuration: { status: 503, code: "GEMINI_CONFIGURATION", message: "The AI connection needs attention. Please check the server configuration." },
         invalid_response: { status: 502, code: "GEMINI_INVALID_RESPONSE", message: "Gemini returned an unusable plan. Your message is still here; please try again." },
         unavailable: { status: 503, code: "GEMINI_UNAVAILABLE", message: "Gemini could not be reached. Your message is still here; please try again." },

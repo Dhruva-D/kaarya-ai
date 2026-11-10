@@ -2,13 +2,14 @@ import { GoogleGenAI } from "@google/genai";
 import { proposalSchema, providerProposalSchema, type Proposal } from "../../agent/proposal";
 
 type InteractionResult = { status: string; output_text?: string; model?: string };
+type InteractionRequestOptions = { retries: { strategy: "attempt-count-backoff"; maxRetries: number }; retry_codes: string[] };
 type CreateInteraction = (params: {
   model: string;
   input: string;
   system_instruction: string;
   response_format: { type: "text"; mime_type: "application/json"; schema: typeof providerProposalSchema };
   store: false;
-}) => Promise<InteractionResult>;
+}, options?: InteractionRequestOptions) => Promise<InteractionResult>;
 
 export class GeminiProposalError extends Error {
   constructor(public readonly reason: "busy" | "rate_limited" | "configuration" | "invalid_response" | "unavailable") {
@@ -39,7 +40,7 @@ export async function proposeCalendarAction(
 
   const model = options.model ?? "gemini-3.6-flash";
   const client = options.createInteraction ? undefined : new GoogleGenAI({ apiKey: options.apiKey });
-  const create = options.createInteraction ?? ((params) => client!.interactions.create(params));
+  const create = options.createInteraction ?? ((params, requestOptions) => client!.interactions.create(params, requestOptions));
   const result = await create({
     model,
     input: [
@@ -59,6 +60,9 @@ export async function proposeCalendarAction(
     ].join(" "),
     response_format: { type: "text", mime_type: "application/json", schema: providerProposalSchema },
     store: false,
+  }, {
+    retries: { strategy: "attempt-count-backoff", maxRetries: 1 },
+    retry_codes: ["408", "5XX"],
   }).catch((error: unknown) => { throw classifyProviderError(error); });
   if (result.status !== "completed" || !result.output_text) {
     throw new GeminiProposalError("invalid_response");
