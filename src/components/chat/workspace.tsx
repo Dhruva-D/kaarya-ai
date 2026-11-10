@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { ActionReview } from "./action-review";
 import { TaskReview } from "./task-review";
+import { MailReview } from "./mail-review";
 import { ActionHistory } from "./action-history";
 import { Composer } from "./composer";
 import { MessageList } from "./message-list";
-import { readApiError, type CalendarPlan, type TaskPlan, type ConversationDetail, type ConversationSummary } from "./types";
+import { readApiError, type CalendarPlan, type TaskPlan, type MailPlan, type ConversationDetail, type ConversationSummary } from "./types";
 
 export function Workspace({ signOutControl, voiceAvailable }: { signOutControl: ReactNode; voiceAvailable: boolean }) {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
@@ -15,13 +16,16 @@ export function Workspace({ signOutControl, voiceAvailable }: { signOutControl: 
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [decisionBusy, setDecisionBusy] = useState(false);
+  const [autoSpeakId, setAutoSpeakId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
 
   const loadDetail = useCallback(async (id: string) => {
     const response = await fetch(`/api/conversations/${id}`, { cache: "no-store" });
     if (!response.ok) throw new Error(await readApiError(response));
-    setDetail(await response.json() as ConversationDetail);
+    const next = await response.json() as ConversationDetail;
+    setDetail(next);
+    return next;
   }, []);
 
   const refreshSummaries = useCallback(async () => {
@@ -70,7 +74,9 @@ export function Workspace({ signOutControl, voiceAvailable }: { signOutControl: 
       if (!response.ok) throw new Error(await readApiError(response));
       const result = await response.json() as { conversationId: string };
       setActiveId(result.conversationId);
-      await loadDetail(result.conversationId);
+      const loaded = await loadDetail(result.conversationId);
+      const latest = loaded.messages.at(-1);
+      if (voiceAvailable && latest?.role === "assistant") setAutoSpeakId(latest.id);
       await refreshSummaries();
       return true;
     } catch (cause) {
@@ -98,7 +104,7 @@ export function Workspace({ signOutControl, voiceAvailable }: { signOutControl: 
       if (!response.ok && response.status !== 202) throw new Error(await readApiError(response));
       await loadDetail(detail.id);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : `The outcome could not be confirmed. Check Google ${plan.action.tool === "tasks.create_task" ? "Tasks" : "Calendar"} before trying again.`);
+      setError(cause instanceof Error ? cause.message : `The outcome could not be confirmed. Check ${plan.action.tool === "gmail.send" ? "Gmail Sent" : plan.action.tool === "tasks.create_task" ? "Google Tasks" : "Google Calendar"} before trying again.`);
       await loadDetail(detail.id).catch(() => undefined);
     } finally {
       setBusy(false);
@@ -126,13 +132,13 @@ export function Workspace({ signOutControl, voiceAvailable }: { signOutControl: 
           {signOutControl}
         </div>
         <div className="mx-auto flex w-full max-w-[780px] flex-1 flex-col">
-          {loading ? <p className="pt-12 text-sm text-[#5A6664]" role="status">Loading your workspace…</p> : detail?.messages.length ? <div className="flex-1 py-10"><MessageList busy={busy} messages={detail.messages} voiceAvailable={voiceAvailable} /></div> : <div className="flex flex-1 flex-col justify-center py-12"><p className="text-sm font-semibold text-[#166B61]">YOUR WORKSPACE</p><h1 className="mt-4 max-w-lg text-3xl font-semibold tracking-tight sm:text-4xl">What would you like to get done?</h1><p className="mt-4 max-w-xl text-[15px] leading-7 text-[#5A6664]">Describe a meeting or task. I’ll ask for missing details and show the exact action before you decide whether to create it.</p></div>}
+          {loading ? <p className="pt-12 text-sm text-[#5A6664]" role="status">Loading your workspace…</p> : detail?.messages.length ? <div className="flex-1 py-10"><MessageList autoSpeakId={autoSpeakId} busy={busy} messages={detail.messages} voiceAvailable={voiceAvailable} /></div> : <div className="flex flex-1 flex-col justify-center py-12"><p className="text-sm font-semibold text-[#166B61]">YOUR WORKSPACE</p><h1 className="mt-4 max-w-lg text-3xl font-semibold tracking-tight sm:text-4xl">What would you like to get done?</h1><p className="mt-4 max-w-xl text-[15px] leading-7 text-[#5A6664]">Describe a meeting or task. I’ll ask for missing details and show the exact action before you decide whether to create it.</p></div>}
           {error && <div className="mb-4 rounded-[10px] border border-[#E4C9C4] bg-[#FFF7F5] px-4 py-3 text-sm text-[#8E392F]" role="alert">{error}</div>}
           <div className="sticky bottom-0 bg-[#F6F6F3] pb-2 pt-3"><Composer disabled={busy || loading} onSend={send} voiceAvailable={voiceAvailable} /><p className="mt-3 text-xs leading-5 text-[#5A6664]">{voiceAvailable ? "Review and edit the transcript before sending. Voice is processed only when you press Record." : "Voice input is unavailable right now. You can type your request above."}</p></div>
         </div>
       </section>
 
-      {hasSidePanel && <aside className="min-w-0 border-t border-[#E3E7E3] bg-[#F6F6F3] p-5 lg:border-l lg:border-t-0 lg:p-6" aria-label="Action review"><div className="lg:sticky lg:top-6">{plan?.action.tool === "calendar.create_event" && <ActionReview busy={busy} creating={decisionBusy} key={plan.id} onApprove={() => decide("approve")} onReject={() => decide("reject")} plan={plan as CalendarPlan} />}{plan?.action.tool === "tasks.create_task" && <TaskReview busy={busy} creating={decisionBusy} key={plan.id} onApprove={() => decide("approve")} onReject={() => decide("reject")} plan={plan as TaskPlan} />}<ActionHistory items={history} /></div></aside>}
+      {hasSidePanel && <aside className="min-w-0 border-t border-[#E3E7E3] bg-[#F6F6F3] p-5 lg:border-l lg:border-t-0 lg:p-6" aria-label="Action review"><div className="lg:sticky lg:top-6">{plan?.action.tool === "calendar.create_event" && <ActionReview busy={busy} creating={decisionBusy} key={plan.id} onApprove={() => decide("approve")} onReject={() => decide("reject")} plan={plan as CalendarPlan} />}{plan?.action.tool === "tasks.create_task" && <TaskReview busy={busy} creating={decisionBusy} key={plan.id} onApprove={() => decide("approve")} onReject={() => decide("reject")} plan={plan as TaskPlan} />}{plan?.action.tool === "gmail.send" && <MailReview busy={busy} creating={decisionBusy} key={plan.id} onApprove={() => decide("approve")} onReject={() => decide("reject")} plan={plan as MailPlan} />}<ActionHistory items={history} /></div></aside>}
     </div>
   );
 }

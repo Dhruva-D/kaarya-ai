@@ -10,6 +10,7 @@ import { calendarDetailQuestion, missingCalendarDetails } from "./calendar-slots
 import { calendarPreferenceQuestion, calendarPreferencesNeedConfirmation } from "./calendar-preferences";
 import { validateTaskProposal } from "./task-plan";
 import { missingTaskDetails, taskDetailQuestion } from "./task-slots";
+import { recipientQuestion, recipientWasSupplied, validateMailProposal } from "./mail-plan";
 
 export class ConversationNotFound extends Error {}
 export class UnsafeProposal extends Error {}
@@ -44,24 +45,28 @@ export async function handleChat(userId: string, request: ChatRequest) {
   const userTurns = [...recent.filter((turn) => turn.role === "user").map((turn) => turn.content), request.text];
   const missingDetails = action?.tool === "calendar.create_event" ? missingCalendarDetails(userTurns, action.args.title) : [];
   const missingTask = action?.tool === "tasks.create_task" ? missingTaskDetails(userTurns, action) : [];
+  const missingRecipient = action?.tool === "gmail.send" && !recipientWasSupplied(action, userTurns);
   const missingPreferences = action?.tool === "calendar.create_event" && !missingDetails.length ? calendarPreferencesNeedConfirmation(userTurns, action) : false;
-  if (missingDetails.length || missingTask.length || missingPreferences) action = undefined;
+  if (missingDetails.length || missingTask.length || missingPreferences || missingRecipient) action = undefined;
   if (action) {
     try {
       if (action.tool === "calendar.create_event") validateCalendarProposal(action, timezone, new Date(), userTurns);
-      else validateTaskProposal(action);
+      else if (action.tool === "tasks.create_task") validateTaskProposal(action);
+      else validateMailProposal(action, userTurns);
     } catch {
-      throw new UnsafeProposal("The proposed event needs clarification before it can be reviewed");
+      throw new UnsafeProposal("The proposed action needs clarification before it can be reviewed");
     }
   }
   const assistantText = missingDetails.length
     ? calendarDetailQuestion(missingDetails, request.languageCode)
     : missingTask.length
       ? taskDetailQuestion(missingTask, request.languageCode)
+    : missingRecipient
+      ? recipientQuestion(request.languageCode)
     : missingPreferences
       ? calendarPreferenceQuestion(request.languageCode)
     : action
-    ? replyCopy(action.tool === "tasks.create_task" ? "task_review" : "review", request.languageCode)
+    ? replyCopy(action.tool === "gmail.send" ? "mail_review" : action.tool === "tasks.create_task" ? "task_review" : "review", request.languageCode)
     : proposal.kind === "needs_clarification"
       ? proposal.questions.join(" ")
       : replyCopy("unsupported", request.languageCode);
@@ -91,8 +96,8 @@ export async function handleChat(userId: string, request: ChatRequest) {
   return {
     conversationId,
     assistantText,
-    resultType: missingDetails.length || missingTask.length || missingPreferences ? "needs_clarification" : proposal.kind,
-    questions: missingDetails.length || missingTask.length || missingPreferences ? [assistantText] : proposal.questions,
+    resultType: missingDetails.length || missingTask.length || missingPreferences || missingRecipient ? "needs_clarification" : proposal.kind,
+    questions: missingDetails.length || missingTask.length || missingPreferences || missingRecipient ? [assistantText] : proposal.questions,
     plan: action && planId && canonicalHash ? { id: planId, version: 1, canonicalHash, action } : null,
   };
 }

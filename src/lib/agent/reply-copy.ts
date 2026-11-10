@@ -21,19 +21,27 @@ const taskReview: Record<SpeechLanguage, string> = {
   "ta-IN": "பணியை உருவாக்கும் முன் அதன் விவரங்களைச் சரிபார்க்கவும்.", "te-IN": "టాస్క్‌ను సృష్టించే ముందు వివరాలను పరిశీలించండి.",
 };
 
-const unsupported: Record<SpeechLanguage, string> = {
-  "bn-IN": "এখন আমি শুধু ক্যালেন্ডার ইভেন্টে সাহায্য করতে পারি।",
-  "en-IN": "I can only help with Calendar events right now.",
-  "gu-IN": "હાલ હું ફક્ત કૅલેન્ડર ઇવેન્ટમાં મદદ કરી શકું છું.",
-  "hi-IN": "अभी मैं केवल कैलेंडर इवेंट में मदद कर सकता हूँ।",
-  "kn-IN": "ಈಗ ನಾನು ಕ್ಯಾಲೆಂಡರ್ ಕಾರ್ಯಕ್ರಮಗಳಿಗೆ ಮಾತ್ರ ಸಹಾಯ ಮಾಡಬಲ್ಲೆ.",
-  "ml-IN": "ഇപ്പോൾ കലണ്ടർ ഇവന്റുകളിൽ മാത്രമേ എനിക്ക് സഹായിക്കാനാകൂ.",
-  "mr-IN": "सध्या मी फक्त कॅलेंडर इव्हेंटमध्ये मदत करू शकतो.",
-  "pa-IN": "ਇਸ ਵੇਲੇ ਮੈਂ ਸਿਰਫ਼ ਕੈਲੰਡਰ ਇਵੈਂਟਾਂ ਵਿੱਚ ਮਦਦ ਕਰ ਸਕਦਾ ਹਾਂ।",
-  "ta-IN": "இப்போது நாட்காட்டி நிகழ்வுகளில் மட்டுமே உதவ முடியும்.",
-  "te-IN": "ప్రస్తుతం నేను క్యాలెండర్ ఈవెంట్‌లకు మాత్రమే సహాయం చేయగలను.",
+const mailReview: Record<SpeechLanguage, string> = {
+  "bn-IN": "পাঠানোর আগে ইমেলের বিবরণ দেখে নিন।", "en-IN": "Please review this email before I send it.",
+  "gu-IN": "મોકલતા પહેલાં ઇમેઇલની વિગતો તપાસો.", "hi-IN": "भेजने से पहले ईमेल की जानकारी जाँच लें।",
+  "kn-IN": "ಕಳುಹಿಸುವ ಮೊದಲು ಇಮೇಲ್ ವಿವರಗಳನ್ನು ಪರಿಶೀಲಿಸಿ.", "ml-IN": "അയയ്ക്കുന്നതിന് മുമ്പ് ഇമെയിൽ വിശദാംശങ്ങൾ പരിശോധിക്കുക.",
+  "mr-IN": "पाठवण्यापूर्वी ईमेलचे तपशील तपासा.", "pa-IN": "ਭੇਜਣ ਤੋਂ ਪਹਿਲਾਂ ਈਮੇਲ ਦੇ ਵੇਰਵੇ ਜਾਂਚ ਲਵੋ।",
+  "ta-IN": "அனுப்பும் முன் மின்னஞ்சல் விவரங்களைச் சரிபார்க்கவும்.", "te-IN": "పంపే ముందు ఇమెయిల్ వివరాలను పరిశీలించండి.",
 };
 
-export function replyCopy(kind: "review" | "task_review" | "unsupported", language?: SpeechLanguage): string {
-  return (kind === "review" ? review : kind === "task_review" ? taskReview : unsupported)[language ?? "en-IN"];
+const unsupported: Record<SpeechLanguage, string> = {
+  "bn-IN": "আমি এখন এই অনুরোধে সাহায্য করতে পারছি না।",
+  "en-IN": "I can't help with this request right now.",
+  "gu-IN": "હમણાં હું આ વિનંતીમાં મદદ કરી શકતો નથી.",
+  "hi-IN": "अभी मैं इस अनुरोध में मदद नहीं कर सकता।",
+  "kn-IN": "ಈ ವಿನಂತಿಗೆ ಈಗ ಸಹಾಯ ಮಾಡಲು ಸಾಧ್ಯವಿಲ್ಲ.",
+  "ml-IN": "ഈ അഭ്യർത്ഥനയിൽ ഇപ്പോൾ സഹായിക്കാൻ കഴിയില്ല.",
+  "mr-IN": "सध्या या विनंतीत मदत करू शकत नाही.",
+  "pa-IN": "ਮੈਂ ਹੁਣ ਇਸ ਬੇਨਤੀ ਵਿੱਚ ਮਦਦ ਨਹੀਂ ਕਰ ਸਕਦਾ।",
+  "ta-IN": "இப்போது இந்தக் கோரிக்கைக்கு உதவ முடியாது.",
+  "te-IN": "ప్రస్తుతం ఈ అభ్యర్థనలో సహాయం చేయలేను.",
+};
+
+export function replyCopy(kind: "review" | "task_review" | "mail_review" | "unsupported", language?: SpeechLanguage): string {
+  return (kind === "review" ? review : kind === "task_review" ? taskReview : kind === "mail_review" ? mailReview : unsupported)[language ?? "en-IN"];
 }

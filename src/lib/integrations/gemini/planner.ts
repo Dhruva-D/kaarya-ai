@@ -38,7 +38,7 @@ export async function proposeAction(
     throw new Error("Invalid user timezone");
   }
 
-  const model = options.model ?? "gemini-3.6-flash";
+  const model = options.model ?? "gemini-3.5-flash-lite";
   const client = options.createInteraction ? undefined : new GoogleGenAI({ apiKey: options.apiKey });
   const create = options.createInteraction ?? ((params, requestOptions) => client!.interactions.create(params, requestOptions));
   const request = {
@@ -52,12 +52,13 @@ export async function proposeAction(
     ].join("\n"),
     system_instruction: [
       "You are Kaarya's proposal parser. Return only the JSON object matching the schema.",
-      "You may propose one Calendar event or one Google Task, ask a precise follow-up question, or say the request is unsupported.",
+      "You may propose one Calendar event, one Google Task, or one Gmail send, ask a precise follow-up question, or say the request is unsupported.",
       "Never claim an action has executed. No tools are available to you.",
       "Do not invent people, email addresses, dates, or private facts. Ask when an essential detail is ambiguous.",
       "A Calendar action needs a user-specified event title and duration. If either is missing, ask a concise follow-up question; never silently choose a duration.",
       "Ask whether the user wants guests or a Google Meet link before finalizing an event. Never invent a guest. An attendee must be an email address the user supplied exactly. Use attendees=[] and addMeet=false only after the user declines those options.",
       "For a Google Task, use tasks.create_task with title, optional notes and optional dueDate in YYYY-MM-DD. Google Tasks due date has no time or alarm. If the user asks for a timed reminder, clarify that only a date can be saved; never imply a timed alert.",
+      "For Gmail, use gmail.send only when the user supplied an exact recipient email. Ask for missing email, subject or body. Draft a concise body; never claim it was sent. The user will review every word and approve before sending.",
       "Use the recent conversation and pending draft only to resolve the latest user's references or corrections.",
       "For an event, use an absolute ISO start and end with offset in the user's timezone.",
       "Write assistantMessage and every clarification question in the requested reply language. Keep Calendar title as the user states it. Do not translate email addresses or names.",
@@ -66,8 +67,8 @@ export async function proposeAction(
     store: false,
   } as const;
   const requestOptions: InteractionRequestOptions = {
-    retries: { strategy: "attempt-count-backoff", maxRetries: 1 },
-    retry_codes: ["408", "5XX"],
+    retries: { strategy: "attempt-count-backoff", maxRetries: 0 },
+    retry_codes: [],
   };
   const createForModel = (selectedModel: string) => create({ ...request, model: selectedModel }, requestOptions)
     .catch((error: unknown) => { throw classifyProviderError(error); });
@@ -76,7 +77,7 @@ export async function proposeAction(
   try {
     result = await createForModel(selectedModel);
   } catch (error) {
-    if (!(error instanceof GeminiProposalError) || error.reason !== "rate_limited" || model !== "gemini-3.6-flash") throw error;
+    if (!(error instanceof GeminiProposalError) || (error.reason !== "rate_limited" && error.reason !== "busy") || model !== "gemini-3.6-flash") throw error;
     selectedModel = "gemini-3.5-flash-lite";
     result = await createForModel(selectedModel);
   }

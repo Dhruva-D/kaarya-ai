@@ -6,6 +6,7 @@ import { decryptToken, encryptToken, parseTokenKey } from "../../security/token-
 
 const calendarScope = "https://www.googleapis.com/auth/calendar.events";
 const tasksScope = "https://www.googleapis.com/auth/tasks";
+const gmailSendScope = "https://www.googleapis.com/auth/gmail.send";
 
 export class CalendarConnectionUnavailable extends Error {}
 
@@ -15,6 +16,10 @@ export function hasCalendarScope(scopes: string): boolean {
 
 export function hasTasksScope(scopes: string): boolean {
   return scopes.split(/\s+/).includes(tasksScope);
+}
+
+export function hasGmailSendScope(scopes: string): boolean {
+  return scopes.split(/\s+/).includes(gmailSendScope);
 }
 
 async function getGoogleAuth(userId: string, requiredScope: string, label: string) {
@@ -55,4 +60,8 @@ export function getCalendarAuth(userId: string) {
 
 export function getTasksAuth(userId: string) {
   return getGoogleAuth(userId, tasksScope, "Tasks");
+}
+
+export function getGmailAuth(userId: string) {
+  return getGoogleAuth(userId, gmailSendScope, "Gmail send");
 }

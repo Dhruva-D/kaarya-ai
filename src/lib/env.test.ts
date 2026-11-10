@@ -13,7 +13,7 @@ const valid = {
 
 describe("server environment", () => {
   it("accepts complete configuration with documented defaults", () => {
-    expect(parseServerEnv(valid).GEMINI_MODEL).toBe("gemini-3.6-flash");
+    expect(parseServerEnv(valid).GEMINI_MODEL).toBe("gemini-3.5-flash-lite");
   });
 
   it("reports invalid field names without exposing values", () => {

@@ -1,12 +1,12 @@
 # Kaarya AI
 
-Kaarya AI is a voice-first, human-approved productivity assistant. Phase 1 takes a short voice or typed request, proposes a Google Calendar event, and creates it only after the user reviews and approves the exact details.
+Kaarya AI is a voice-first, human-approved productivity assistant. Phase 1 turns short voice or typed requests into reviewed Google Calendar, Google Tasks, or Gmail actions. External writes require exact approval.
 
 ## Current status
 
 - Next.js, TypeScript, Tailwind CSS and shadcn/ui foundation: scaffolded and checked locally.
 - Gnani Prisma v3.0 browser recorder, WAV encoder, authenticated transcription route and editable transcript: `indic-auto` detects one of ten supported languages. A synthetic clip returned a real v3.0 transcript and detected language. Browser microphone capture was verified earlier with v2.5; the v3.0 browser path still needs a user microphone check. Typed fallback remains available.
-- Gemini Calendar proposal adapter: strict Zod contract tests and real `gemini-3.6-flash` structured proposals verified. When that model reaches its project quota, a real `gemini-3.5-flash-lite` structured proposal is used as the bounded fallback; this was verified in the signed-in UI.
+- Gemini structured proposal adapter: strict Zod contract tests and real `gemini-3.6-flash` proposals verified. `gemini-3.5-flash-lite` is now the local default because direct synthetic requests were faster and the 3.6 free-tier quota was exhausted. A configured 3.6 model falls back to Lite on 429/503. Provider latency remains variable; one signed-in request failed after 28 seconds and its retry took 12.4 seconds for chat, plus 1.9 seconds for TTS.
 - Drizzle/Postgres schema and checked-in migrations: applied to a Supabase test database.
 - Auth.js Google sign-in and encrypted token vault: live sign-in verified; account token columns were empty and connection tokens encrypted at rest.
 - Authenticated typed chat route and owned Calendar plan persistence: live typed request and review verified. Recent completed actions remain visible when a newer plan is pending in the same conversation.
@@ -16,15 +16,15 @@ Kaarya AI is a voice-first, human-approved productivity assistant. Phase 1 takes
 - Per-user database request budgets for chat, transcription and synthesis: implemented with a generated migration; live concurrent behavior not yet checked against Postgres.
 - Approved Calendar execution route and encrypted credential loading: one user-approved, guest-free synthetic event was created on the connected test account, with a stored Google event ID and the event observed in Google Calendar. Duplicate and foreign-user claims of the same completed plan were rejected in a live database check. Expired previews close in the UI; the server also rejects stale approvals.
 - Typed chat and exact Calendar review UI: signed-in desktop and narrow mobile layout inspected; the mobile view showed no horizontal overflow.
-- Gnani Timbre v2.5 voice output: an authenticated, bounded WAV route and manual "Play voice reply" control are implemented. Synthetic English and Kannada provider requests returned real WAV; signed-in English browser playback control completed. Detected speech language is saved with new messages and selects a documented voice. Kannada end-to-end browser playback and automatic playback remain open.
+- Gnani Timbre v2.5 voice output: an authenticated, bounded WAV route automatically speaks each new assistant reply while showing text. If the browser blocks autoplay, it offers an "Enable sound" control. Synthetic English and Kannada provider requests returned real WAV; signed-in browser UI showed automatic "Speaking…" and no app error. Sound was not independently audible to the agent. Detected speech language is saved and selects a documented voice. Kannada end-to-end browser playback remains open.
 - Google Tasks: typed or transcribed requests can produce a persisted, exact approval preview. The server validates title and date-only behavior, and the Google adapter targets the authenticated account's default task list. Local adapter/approval tests and a live Gemini plus signed-in UI preview passed. The Tasks API/scope and a real provider receipt are still pending, so do not claim the integration works end to end yet.
-- Gmail send: not implemented.
+- Gmail send: strict proposal, exact in-app recipient/subject/body review, owned approval path, MIME adapter and receipt handling are implemented. A signed-in synthetic request reached the review and automatic voice reply; **Approve and send was not clicked**. Gmail API/scope, real send and provider receipt remain pending.
 
 This is a locally verified Phase 1 slice, not a deployed service. Full cross-user HTTP testing with a second account and deployment remain open.
 
 ## Local setup
 
-Use Node.js 22 and npm. In this folder, copy `.env.example` to `.env.local` and fill it locally. Obtain `GNANI_API_KEY` from the Gnani API console, `GEMINI_API_KEY` from Google AI Studio, and `DATABASE_URL` from a Supabase Postgres project's Connect panel. For Google sign-in, create a Google Cloud OAuth Web client, enable the Google Calendar API, add `https://www.googleapis.com/auth/calendar.events` in Google Auth Platform → Data access, add your test account under Audience, and put the client ID/secret in `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET`. Then run:
+Use Node.js 22 and npm. In this folder, copy `.env.example` to `.env.local` and fill it locally. Obtain `GNANI_API_KEY` from the Gnani API console, `GEMINI_API_KEY` from Google AI Studio, and `DATABASE_URL` from a Supabase Postgres project's Connect panel. For Google sign-in, create a Google Cloud OAuth Web client, enable the Google Calendar API, add `https://www.googleapis.com/auth/calendar.events` in Google Auth Platform → Data access, add your test account under Audience, and put the client ID/secret in `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET`. Tasks also requires its API and `https://www.googleapis.com/auth/tasks`; users must re-consent after that scope is added. Then run:
 
 ```powershell
 npm install

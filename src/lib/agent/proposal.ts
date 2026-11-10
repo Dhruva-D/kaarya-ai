@@ -27,7 +27,16 @@ export const taskActionSchema = z.strictObject({
   args: taskArgs,
 });
 
-export const proposedActionSchema = z.discriminatedUnion("tool", [calendarActionSchema, taskActionSchema]);
+export const mailActionSchema = z.strictObject({
+  tool: z.literal("gmail.send"),
+  args: z.strictObject({
+    to: z.email().max(320),
+    subject: z.string().trim().min(1).max(150).refine((value) => !/[\r\n]/u.test(value)),
+    body: z.string().trim().min(1).max(4_000),
+  }),
+});
+
+export const proposedActionSchema = z.discriminatedUnion("tool", [calendarActionSchema, taskActionSchema, mailActionSchema]);
 
 export const proposalSchema = z.strictObject({
   kind: z.enum(["action_plan", "needs_clarification", "unsupported"]),
@@ -44,11 +53,14 @@ export const proposalSchema = z.strictObject({
   if (value.kind === "needs_clarification" && value.questions.length === 0) {
     ctx.addIssue({ code: "custom", message: "Clarification requires a question" });
   }
+  if (value.questions.join(" ").length > 500) {
+    ctx.addIssue({ code: "custom", message: "Clarification is too long for voice" });
+  }
 });
 
 export type Proposal = z.infer<typeof proposalSchema>;
 
-/** Simple provider schema; the stricter Zod contract remains authoritative. */
+/** Provider guidance with per-tool shapes; the stricter Zod contract remains authoritative. */
 export const providerProposalSchema = {
   type: "object",
   properties: {
@@ -58,27 +70,32 @@ export const providerProposalSchema = {
     actions: {
       type: "array",
       maxItems: 1,
-      items: {
-        type: "object",
-        properties: {
-          tool: { type: "string", enum: ["calendar.create_event", "tasks.create_task"] },
-          args: {
-            type: "object",
-            properties: {
-              title: { type: "string" },
-              startIso: { type: "string" },
-              endIso: { type: "string" },
-              timezone: { type: "string" },
-              attendees: { type: "array", maxItems: 3, items: { type: "string" } },
-              addMeet: { type: "boolean" },
-              notes: { type: "string" },
-              dueDate: { type: "string" },
-            },
-            required: ["title"],
-          },
+      items: { anyOf: [
+        {
+          type: "object", title: "CalendarEvent",
+          properties: {
+            tool: { type: "string", enum: ["calendar.create_event"] },
+            args: { type: "object", properties: {
+              title: { type: "string" }, startIso: { type: "string" }, endIso: { type: "string" }, timezone: { type: "string" },
+              attendees: { type: "array", maxItems: 3, items: { type: "string" } }, addMeet: { type: "boolean" },
+            }, required: ["title", "startIso", "endIso", "timezone"] },
+          }, required: ["tool", "args"],
         },
-        required: ["tool", "args"],
-      },
+        {
+          type: "object", title: "GoogleTask",
+          properties: {
+            tool: { type: "string", enum: ["tasks.create_task"] },
+            args: { type: "object", properties: { title: { type: "string" }, notes: { type: "string" }, dueDate: { type: "string" } }, required: ["title"] },
+          }, required: ["tool", "args"],
+        },
+        {
+          type: "object", title: "GmailSend",
+          properties: {
+            tool: { type: "string", enum: ["gmail.send"] },
+            args: { type: "object", properties: { to: { type: "string" }, subject: { type: "string" }, body: { type: "string" } }, required: ["to", "subject", "body"] },
+          }, required: ["tool", "args"],
+        },
+      ] },
     },
   },
   required: ["kind", "assistantMessage", "questions", "actions"],

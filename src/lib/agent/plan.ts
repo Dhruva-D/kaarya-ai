@@ -12,7 +12,8 @@ export const approvalInputSchema = z.strictObject({
 export type ApprovalInput = z.infer<typeof approvalInputSchema>;
 export type CalendarAction = Extract<Proposal["actions"][number], { tool: "calendar.create_event" }>;
 export type TaskAction = Extract<Proposal["actions"][number], { tool: "tasks.create_task" }>;
-export type ProposedAction = CalendarAction | TaskAction;
+export type MailAction = Extract<Proposal["actions"][number], { tool: "gmail.send" }>;
+export type ProposedAction = CalendarAction | TaskAction | MailAction;
 
 export function isApprovalPreviewLive(status: string, expiresAt: string, now = Date.now()): boolean {
   const expiry = Date.parse(expiresAt);

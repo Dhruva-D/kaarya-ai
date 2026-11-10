@@ -4,10 +4,12 @@ const mocks = vi.hoisted(() => ({
   auth: vi.fn(),
   getCalendarAuth: vi.fn(),
   getTasksAuth: vi.fn(),
+  getGmailAuth: vi.fn(),
   getOwnedPendingActionType: vi.fn(),
   claimActionPlan: vi.fn(),
   createCalendarEvent: vi.fn(),
   createGoogleTask: vi.fn(),
+  sendGmailMessage: vi.fn(),
   recordActionOutcome: vi.fn(),
 }));
 
@@ -15,6 +17,7 @@ vi.mock("@/auth", () => ({ auth: mocks.auth }));
 vi.mock("@/lib/integrations/google/connection", () => ({
   getCalendarAuth: mocks.getCalendarAuth,
   getTasksAuth: mocks.getTasksAuth,
+  getGmailAuth: mocks.getGmailAuth,
   CalendarConnectionUnavailable: class extends Error {},
 }));
 vi.mock("@/lib/db/repositories/plans", () => ({ claimActionPlan: mocks.claimActionPlan, getOwnedPendingActionType: mocks.getOwnedPendingActionType }));
@@ -23,6 +26,7 @@ vi.mock("@/lib/integrations/google/calendar", () => ({
   CalendarWriteError: class extends Error {},
 }));
 vi.mock("@/lib/integrations/google/tasks", () => ({ createGoogleTask: mocks.createGoogleTask, TaskWriteError: class extends Error {} }));
+vi.mock("@/lib/integrations/google/gmail", () => ({ sendGmailMessage: mocks.sendGmailMessage, GmailWriteError: class extends Error {} }));
 vi.mock("@/lib/db/repositories/action-outcome", () => ({ recordActionOutcome: mocks.recordActionOutcome }));
 
 import { POST } from "./route";
@@ -51,6 +55,7 @@ describe("Calendar approval route guards", () => {
     mocks.auth.mockResolvedValue({ user: { id: "owner-A" } });
     mocks.getCalendarAuth.mockResolvedValue({});
     mocks.getTasksAuth.mockResolvedValue({});
+    mocks.getGmailAuth.mockResolvedValue({});
     mocks.getOwnedPendingActionType.mockResolvedValue("calendar.create_event");
   });
 
@@ -112,5 +117,23 @@ describe("Calendar approval route guards", () => {
     expect(mocks.getTasksAuth).not.toHaveBeenCalled();
     expect(mocks.claimActionPlan).not.toHaveBeenCalled();
     expect(mocks.createGoogleTask).not.toHaveBeenCalled();
+  });
+
+  it("sends only the exact approved Gmail action through Gmail scope", async () => {
+    const mail = { tool: "gmail.send" as const, args: { to: "test@example.com", subject: "Synthetic update", body: "This is a synthetic test." } };
+    const mailApproval = { ...approval, canonicalHash: canonicalActionHash(mail) };
+    mocks.getOwnedPendingActionType.mockResolvedValue("gmail.send");
+    mocks.claimActionPlan.mockResolvedValue({
+      plan: { canonicalHash: mailApproval.canonicalHash },
+      action: { id: "33333333-3333-4333-8333-333333333333", type: mail.tool, argumentsJson: mail.args },
+    });
+    mocks.sendGmailMessage.mockResolvedValue({ providerObjectId: "gmail-message-id" });
+    const response = await POST(request(undefined, mailApproval), context);
+    expect(response.status).toBe(200);
+    expect((await response.json()).providerObjectId).toBe("gmail-message-id");
+    expect(mocks.getGmailAuth).toHaveBeenCalledWith("owner-A");
+    expect(mocks.getCalendarAuth).not.toHaveBeenCalled();
+    expect(mocks.getTasksAuth).not.toHaveBeenCalled();
+    expect(mocks.sendGmailMessage).toHaveBeenCalledWith(mail, {});
   });
 });

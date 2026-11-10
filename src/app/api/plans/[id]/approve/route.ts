@@ -7,6 +7,8 @@ import { claimActionPlan, getOwnedPendingActionType } from "@/lib/db/repositorie
 import { CalendarWriteError, createCalendarEvent } from "@/lib/integrations/google/calendar";
 import { CalendarConnectionUnavailable, getCalendarAuth, getTasksAuth } from "@/lib/integrations/google/connection";
 import { createGoogleTask, TaskWriteError } from "@/lib/integrations/google/tasks";
+import { sendGmailMessage, GmailWriteError } from "@/lib/integrations/google/gmail";
+import { getGmailAuth } from "@/lib/integrations/google/connection";
 import { isSameOriginPost } from "@/lib/security/origin";
 import { z } from "zod";
 
@@ -23,13 +25,13 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   if (!parsed.success) return Response.json({ code: "INVALID_INPUT", message: "Please review and confirm the current plan" }, { status: 400 });
 
   const actionType = await getOwnedPendingActionType(id, session.user.id).catch(() => null);
-  if (actionType !== "calendar.create_event" && actionType !== "tasks.create_task") {
+  if (actionType !== "calendar.create_event" && actionType !== "tasks.create_task" && actionType !== "gmail.send") {
     return Response.json({ code: "STALE_PLAN", message: "This plan is expired, changed, or already approved" }, { status: 409 });
   }
-  const provider = actionType === "tasks.create_task" ? "google_tasks" : "google_calendar";
+  const provider = actionType === "tasks.create_task" ? "google_tasks" : actionType === "gmail.send" ? "gmail" : "google_calendar";
   let googleAuth;
   try {
-    googleAuth = actionType === "tasks.create_task" ? await getTasksAuth(session.user.id) : await getCalendarAuth(session.user.id);
+    googleAuth = actionType === "tasks.create_task" ? await getTasksAuth(session.user.id) : actionType === "gmail.send" ? await getGmailAuth(session.user.id) : await getCalendarAuth(session.user.id);
   } catch (error) {
     if (error instanceof CalendarConnectionUnavailable) return Response.json({ code: "GOOGLE_RECONNECT", message: error.message }, { status: 403 });
     return Response.json({ code: "GOOGLE_UNAVAILABLE", message: "Google connection could not be checked" }, { status: 503 });
@@ -49,7 +51,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   }
   try {
     if (checked.data.tool === "calendar.create_event") validateCalendarProposal(checked.data, checked.data.args.timezone);
-    else validateTaskProposal(checked.data);
+    else if (checked.data.tool === "tasks.create_task") validateTaskProposal(checked.data);
+    // Gmail's recipient evidence was checked when the immutable plan was saved.
   } catch {
     await recordActionOutcome(session.user.id, id, claimed.action.id, provider, { status: "failed", errorCode: "ACTION_INVALID" }).catch(() => undefined);
     return Response.json({ code: "ACTION_INVALID", message: "This action is no longer valid" }, { status: 409 });
@@ -58,15 +61,17 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   try {
     const receipt = checked.data.tool === "calendar.create_event"
       ? await createCalendarEvent(claimed.action.id, checked.data, googleAuth)
-      : await createGoogleTask(checked.data, googleAuth);
+      : checked.data.tool === "tasks.create_task"
+        ? await createGoogleTask(checked.data, googleAuth)
+        : await sendGmailMessage(checked.data, googleAuth);
     await recordActionOutcome(session.user.id, id, claimed.action.id, provider, { status: "succeeded", ...receipt });
     return Response.json({ status: "succeeded", actionId: claimed.action.id, provider, ...receipt });
   } catch (error) {
-    const status = error instanceof CalendarWriteError || error instanceof TaskWriteError ? error.outcome : "unknown";
+    const status = error instanceof CalendarWriteError || error instanceof TaskWriteError || error instanceof GmailWriteError ? error.outcome : "unknown";
     const saved = await recordActionOutcome(session.user.id, id, claimed.action.id, provider, { status, errorCode: status === "failed" ? "GOOGLE_REJECTED" : "CONFIRMATION_LOST" })
       .then(() => true).catch(() => false);
     const visibleStatus = saved ? status : "unknown";
-    const label = provider === "google_tasks" ? "Google Tasks" : "Calendar";
+    const label = provider === "google_tasks" ? "Google Tasks" : provider === "gmail" ? "Gmail" : "Calendar";
     return Response.json({ status: visibleStatus, actionId: claimed.action.id, message: visibleStatus === "unknown" ? `${label} may have created this action. Check ${label} before trying again.` : `${label} could not create this action.` }, { status: visibleStatus === "unknown" ? 202 : 502 });
   }
 }

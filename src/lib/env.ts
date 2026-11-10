@@ -10,7 +10,7 @@ export const serverEnvSchema = z.object({
   TOKEN_ENCRYPTION_KEY: nonEmpty,
   GNANI_API_KEY: nonEmpty,
   GEMINI_API_KEY: nonEmpty,
-  GEMINI_MODEL: nonEmpty.default("gemini-3.6-flash"),
+  GEMINI_MODEL: nonEmpty.default("gemini-3.5-flash-lite"),
   GNANI_STT_URL: z.url().default("https://api.vachana.ai/stt/v3"),
   GNANI_TTS_URL: z.url().default("https://api.vachana.ai/api/v1/tts/inference"),
 });

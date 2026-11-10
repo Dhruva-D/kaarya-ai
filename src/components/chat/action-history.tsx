@@ -13,9 +13,9 @@ export function ActionHistory({ items }: { items: ActionHistoryItem[] }) {
             <p className="min-w-0 break-words text-sm font-semibold text-[#222A2B]">{item.title}</p>
             <span className={`shrink-0 text-xs font-medium ${item.status === "succeeded" ? "text-[#166B61]" : "text-[#8E392F]"}`}>{statusLabel[item.status]}</span>
           </div>
-          <p className="mt-1 text-xs leading-5 text-[#5A6664]">{item.tool === "calendar.create_event" ? new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: item.timezone }).format(new Date(item.startIso)) : item.dueDate ? `Due ${item.dueDate}` : "No due date"}</p>
+          <p className="mt-1 text-xs leading-5 text-[#5A6664]">{item.tool === "calendar.create_event" ? new Intl.DateTimeFormat("en-IN", { dateStyle: "medium", timeStyle: "short", timeZone: item.timezone }).format(new Date(item.startIso)) : item.tool === "gmail.send" ? `To ${item.to}` : item.dueDate ? `Due ${item.dueDate}` : "No due date"}</p>
           {item.status === "succeeded" && item.providerLink && <a className="mt-2 inline-block text-xs font-medium text-[#166B61] underline underline-offset-2" href={item.providerLink} rel="noopener noreferrer" target="_blank">Open in Google {item.tool === "calendar.create_event" ? "Calendar" : "Tasks"}</a>}
-          {item.status === "unknown" && <p className="mt-2 text-xs leading-5 text-[#8E392F]">The result could not be confirmed. Check Google {item.tool === "calendar.create_event" ? "Calendar" : "Tasks"} before retrying.</p>}
+          {item.status === "unknown" && <p className="mt-2 text-xs leading-5 text-[#8E392F]">The result could not be confirmed. Check {item.tool === "calendar.create_event" ? "Google Calendar" : item.tool === "tasks.create_task" ? "Google Tasks" : "Gmail Sent"} before retrying.</p>}
         </li>)}
       </ol>
     </section>

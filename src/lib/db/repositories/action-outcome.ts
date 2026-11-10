@@ -6,7 +6,7 @@ export async function recordActionOutcome(
   userId: string,
   planId: string,
   actionId: string,
-  provider: "google_calendar" | "google_tasks",
+  provider: "google_calendar" | "google_tasks" | "gmail",
   outcome: { status: "succeeded"; providerObjectId: string; providerLink?: string; meetStatus?: "confirmed" | "pending" | "failed"; meetLink?: string } | { status: "failed" | "unknown"; errorCode: string },
 ) {
   await getDb().transaction(async (tx) => {

@@ -7,7 +7,7 @@ const action = { tool: "calendar.create_event", args: { title: "Project meeting"
 describe("Gemini proposal adapter", () => {
   it("requests schema-bound JSON without tools or stored provider context", async () => {
     const createInteraction = vi.fn(async (params, requestOptions) => {
-      expect(params.model).toBe("gemini-3.6-flash");
+      expect(params.model).toBe("gemini-3.5-flash-lite");
       expect(params.store).toBe(false);
       expect(params.response_format.mime_type).toBe("application/json");
       expect(params.input).toContain("Asia/Kolkata");
@@ -16,7 +16,7 @@ describe("Gemini proposal adapter", () => {
       expect(params.input).toContain("What time?");
       expect(params.input).toContain("Current pending Calendar draft");
       expect(requestOptions.retry_codes).not.toContain("429");
-      expect(requestOptions.retries.maxRetries).toBe(1);
+      expect(requestOptions.retries.maxRetries).toBe(0);
       return { status: "completed", output_text: JSON.stringify({ kind: "action_plan", assistantMessage: "Review this event.", questions: [], actions: [action] }) };
     });
     const result = await proposeAction({ ...input, languageCode: "kn-IN", recentTurns: [{ role: "assistant", content: "What time?" }], pendingAction: action }, { apiKey: "test-key", createInteraction });
@@ -39,6 +39,13 @@ describe("Gemini proposal adapter", () => {
     await expect(proposeAction(input, { apiKey: "test-key", createInteraction: timed })).rejects.toMatchObject({ reason: "invalid_response" });
   });
 
+  it("accepts one bounded Gmail draft for later approval", async () => {
+    const mail = { tool: "gmail.send", args: { to: "test@example.com", subject: "Synthetic update", body: "Hello, this is a test." } };
+    const createInteraction = async () => ({ status: "completed", output_text: JSON.stringify({ kind: "action_plan", assistantMessage: "Review before sending", questions: [], actions: [mail] }) });
+    const result = await proposeAction(input, { apiKey: "test-key", createInteraction });
+    expect(result.proposal.actions).toEqual([mail]);
+  });
+
   it("rejects missing questions, reversed times and incomplete responses", async () => {
     const clarification = async () => ({ status: "completed", output_text: JSON.stringify({ kind: "needs_clarification", assistantMessage: "When?", questions: [], actions: [] }) });
     await expect(proposeAction(input, { apiKey: "test-key", createInteraction: clarification })).rejects.toMatchObject({ reason: "invalid_response" });
@@ -58,7 +65,7 @@ describe("Gemini proposal adapter", () => {
       if (params.model === "gemini-3.6-flash") throw Object.assign(new Error("quota details"), { status: 429 });
       return { status: "completed", output_text: JSON.stringify({ kind: "action_plan", assistantMessage: "Review this event.", questions: [], actions: [action] }) };
     });
-    const result = await proposeAction(input, { apiKey: "test-key", createInteraction });
+    const result = await proposeAction(input, { apiKey: "test-key", model: "gemini-3.6-flash", createInteraction });
     expect(createInteraction.mock.calls.map(([params]) => params.model)).toEqual(["gemini-3.6-flash", "gemini-3.5-flash-lite"]);
     expect(result.model).toBe("gemini-3.5-flash-lite");
     expect(result.proposal.actions).toEqual([action]);

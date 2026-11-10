@@ -14,7 +14,10 @@ export type CalendarPlan = PlanBase & {
 export type TaskPlan = PlanBase & {
   action: { tool: "tasks.create_task"; args: { title: string; notes?: string; dueDate?: string } };
 };
-export type ActionPlan = CalendarPlan | TaskPlan;
+export type MailPlan = PlanBase & {
+  action: { tool: "gmail.send"; args: { to: string; subject: string; body: string } };
+};
+export type ActionPlan = CalendarPlan | TaskPlan | MailPlan;
 export type CalendarHistoryItem = {
   tool: "calendar.create_event";
   planId: string;
@@ -26,7 +29,8 @@ export type CalendarHistoryItem = {
   providerLink: string | null;
 };
 export type TaskHistoryItem = { planId: string; status: "succeeded" | "failed" | "unknown"; title: string; dueDate?: string; providerObjectId: string | null; providerLink: string | null; tool: "tasks.create_task" };
-export type ActionHistoryItem = CalendarHistoryItem | TaskHistoryItem;
+export type MailHistoryItem = { planId: string; status: "succeeded" | "failed" | "unknown"; title: string; to: string; providerObjectId: string | null; providerLink: null; tool: "gmail.send" };
+export type ActionHistoryItem = CalendarHistoryItem | TaskHistoryItem | MailHistoryItem;
 export type ConversationDetail = { id: string; title: string; messages: Turn[]; plan: ActionPlan | null; history: ActionHistoryItem[] };
 
 export async function readApiError(response: Response): Promise<string> {

@@ -1,4 +1,4 @@
-import { calendarActionSchema, taskActionSchema } from "./proposal";
+import { calendarActionSchema, taskActionSchema, mailActionSchema } from "./proposal";
 
 export type CalendarHistoryItem = {
   tool: "calendar.create_event";
@@ -50,6 +50,16 @@ export function toTaskHistoryItem(row: {
   })() ? row.providerLink : null;
   return { tool: "tasks.create_task" as const, planId: row.planId, status: row.status, title: action.data.args.title,
     dueDate: action.data.args.dueDate, providerObjectId: row.providerObjectId, providerLink: link };
+}
+
+export function toMailHistoryItem(row: {
+  planId: string; status: "succeeded" | "failed" | "unknown"; type: string; args: unknown;
+  providerObjectId: string | null;
+}) {
+  const action = mailActionSchema.safeParse({ tool: row.type, args: row.args });
+  if (!action.success) return null;
+  return { tool: "gmail.send" as const, planId: row.planId, status: row.status, title: action.data.args.subject,
+    to: action.data.args.to, providerObjectId: row.providerObjectId, providerLink: null };
 }
 
 export function safeCalendarEventLink(value: string | null): string | null {

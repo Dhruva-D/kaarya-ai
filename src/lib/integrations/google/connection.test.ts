@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hasCalendarScope, hasTasksScope } from "./connection";
+import { hasCalendarScope, hasTasksScope, hasGmailSendScope } from "./connection";
 
 describe("Google Calendar permission", () => {
   it("requires the exact Calendar scope", () => {
@@ -10,5 +10,9 @@ describe("Google Calendar permission", () => {
   it("requires the exact Tasks write scope", () => {
     expect(hasTasksScope("openid https://www.googleapis.com/auth/tasks")).toBe(true);
     expect(hasTasksScope("https://www.googleapis.com/auth/tasks.readonly")).toBe(false);
+  });
+  it("requires only Gmail send, not broad mailbox access", () => {
+    expect(hasGmailSendScope("openid https://www.googleapis.com/auth/gmail.send")).toBe(true);
+    expect(hasGmailSendScope("https://www.googleapis.com/auth/gmail.readonly")).toBe(false);
   });
 });
