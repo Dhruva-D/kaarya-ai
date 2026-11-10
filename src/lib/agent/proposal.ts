@@ -5,6 +5,8 @@ const calendarArgs = z.strictObject({
   startIso: z.iso.datetime({ offset: true }),
   endIso: z.iso.datetime({ offset: true }),
   timezone: z.string().min(1).max(64),
+  attendees: z.array(z.email().max(320)).max(3).optional(),
+  addMeet: z.boolean().optional(),
 }).refine((value) => Date.parse(value.endIso) > Date.parse(value.startIso), {
   message: "Event end must be after start",
 });
@@ -54,6 +56,8 @@ export const providerProposalSchema = {
               startIso: { type: "string" },
               endIso: { type: "string" },
               timezone: { type: "string" },
+              attendees: { type: "array", maxItems: 3, items: { type: "string" } },
+              addMeet: { type: "boolean" },
             },
             required: ["title", "startIso", "endIso", "timezone"],
           },

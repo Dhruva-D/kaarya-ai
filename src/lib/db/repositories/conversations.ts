@@ -44,7 +44,7 @@ export async function getOwnedConversation(userId: string, id: string) {
       expiresAt: plan.expiresAt.toISOString(),
       canonicalHash: plan.canonicalHash,
       action: { tool: action.type, args: action.argumentsJson },
-      receipt: { status: action.status, providerObjectId: action.providerObjectId, providerLink: action.providerLink, errorCode: action.errorCode },
+      receipt: { status: action.status, providerObjectId: action.providerObjectId, providerLink: action.providerLink, meetStatus: action.meetStatus, meetLink: action.meetLink, errorCode: action.errorCode },
     } : null,
     history: historyRows.flatMap((row) => {
       if (row.status !== "succeeded" && row.status !== "failed" && row.status !== "unknown") return [];

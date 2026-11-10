@@ -43,7 +43,7 @@ export async function handleChat(userId: string, request: ChatRequest) {
   if (missingDetails.length) action = undefined;
   if (action) {
     try {
-      validateCalendarProposal(action, timezone);
+      validateCalendarProposal(action, timezone, new Date(), userTurns);
     } catch {
       throw new UnsafeProposal("The proposed event needs clarification before it can be reviewed");
     }

@@ -27,4 +27,23 @@ describe("Google Calendar adapter", () => {
     await expect(createCalendarEvent(id, action, auth, async () => { throw { response: { status: 403 } }; })).rejects.toMatchObject({ outcome: "failed" });
     expect(new CalendarWriteError("unknown", "message").outcome).toBe("unknown");
   });
+
+  it("sends invitations only for reviewed guests and requests a unique Meet", async () => {
+    const withGuests = { ...action, args: { ...action.args, attendees: ["guest@example.com"], addMeet: true } };
+    const insert = vi.fn(async (params) => {
+      expect(params.sendUpdates).toBe("all");
+      expect(params.conferenceDataVersion).toBe(1);
+      expect(params.requestBody.attendees).toEqual([{ email: "guest@example.com" }]);
+      expect(params.requestBody.conferenceData.createRequest).toMatchObject({ requestId: id, conferenceSolutionKey: { type: "hangoutsMeet" } });
+      return { data: { id: eventId, status: "confirmed", hangoutLink: "https://meet.google.com/abc-defg-hij", conferenceData: { createRequest: { status: { statusCode: "success" } } } } };
+    });
+    expect(await createCalendarEvent(id, withGuests, auth, insert)).toEqual({ providerObjectId: eventId, providerLink: undefined, meetStatus: "confirmed", meetLink: "https://meet.google.com/abc-defg-hij" });
+  });
+
+  it("does not claim Meet success while Google is pending", async () => {
+    const withMeet = { ...action, args: { ...action.args, addMeet: true } };
+    const receipt = await createCalendarEvent(id, withMeet, auth, async () => ({ data: { id: eventId, status: "confirmed", conferenceData: { createRequest: { status: { statusCode: "pending" } } } } }));
+    expect(receipt.meetStatus).toBe("pending");
+    expect(receipt.meetLink).toBeUndefined();
+  });
 });

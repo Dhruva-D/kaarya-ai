@@ -139,6 +139,8 @@ export const actions = pgTable("actions", {
   provider: varchar("provider", { length: 32 }),
   providerObjectId: varchar("provider_object_id", { length: 256 }),
   providerLink: text("provider_link"),
+  meetStatus: varchar("meet_status", { length: 16 }),
+  meetLink: text("meet_link"),
   errorCode: varchar("error_code", { length: 64 }),
   attemptedAt: time("attempted_at"),
   completedAt: time("completed_at"),

@@ -43,6 +43,13 @@
       "when": 1794299038780,
       "tag": "0005_unique_sugar_man",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794300327721,
+      "tag": "0006_cloudy_glorian",
+      "breakpoints": true
     }
   ]
 }

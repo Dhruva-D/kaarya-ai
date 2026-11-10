@@ -5,14 +5,18 @@ type CalendarAuth = InstanceType<typeof google.auth.OAuth2>;
 
 type InsertParams = {
   calendarId: "primary";
+  sendUpdates?: "all";
+  conferenceDataVersion?: 1;
   requestBody: {
     id: string;
     summary: string;
     start: { dateTime: string; timeZone: string };
     end: { dateTime: string; timeZone: string };
+    attendees?: Array<{ email: string }>;
+    conferenceData?: { createRequest: { requestId: string; conferenceSolutionKey: { type: "hangoutsMeet" } } };
   };
 };
-type InsertResult = { data: { id?: string | null; htmlLink?: string | null; status?: string | null } };
+type InsertResult = { data: { id?: string | null; htmlLink?: string | null; status?: string | null; hangoutLink?: string | null; conferenceData?: { createRequest?: { status?: { statusCode?: string | null } } } } };
 type EventInsert = (params: InsertParams) => Promise<InsertResult>;
 
 export class CalendarWriteError extends Error {
@@ -33,7 +37,7 @@ export async function createCalendarEvent(
   action: CalendarAction,
   auth: CalendarAuth,
   insertOverride?: EventInsert,
-): Promise<{ providerObjectId: string; providerLink?: string }> {
+): Promise<{ providerObjectId: string; providerLink?: string; meetStatus?: "confirmed" | "pending" | "failed"; meetLink?: string }> {
   const eventId = calendarEventId(actionId);
   const insert = insertOverride ?? (async (params: InsertParams) => {
     const response = await google.calendar({ version: "v3", auth }).events.insert(params, { timeout: 30_000 });
@@ -43,11 +47,15 @@ export async function createCalendarEvent(
   try {
     result = await insert({
       calendarId: "primary",
+      ...(action.args.attendees?.length ? { sendUpdates: "all" as const } : {}),
+      ...(action.args.addMeet ? { conferenceDataVersion: 1 as const } : {}),
       requestBody: {
         id: eventId,
         summary: action.args.title,
         start: { dateTime: action.args.startIso, timeZone: action.args.timezone },
         end: { dateTime: action.args.endIso, timeZone: action.args.timezone },
+        ...(action.args.attendees?.length ? { attendees: action.args.attendees.map((email) => ({ email })) } : {}),
+        ...(action.args.addMeet ? { conferenceData: { createRequest: { requestId: actionId, conferenceSolutionKey: { type: "hangoutsMeet" as const } } } } : {}),
       },
     });
   } catch (error) {
@@ -65,5 +73,10 @@ export async function createCalendarEvent(
     const url = new URL(link);
     return url.protocol === "https:" && ["calendar.google.com", "www.google.com"].includes(url.hostname) && url.pathname.startsWith("/calendar/");
   })() ? link : undefined;
-  return { providerObjectId: result.data.id, providerLink: safeLink };
+  const status = result.data.conferenceData?.createRequest?.status?.statusCode;
+  const meetStatus = action.args.addMeet ? status === "success" && result.data.hangoutLink ? "confirmed" : status === "failure" ? "failed" : "pending" : undefined;
+  const meetLink = meetStatus === "confirmed" && result.data.hangoutLink && URL.canParse(result.data.hangoutLink) &&
+    new URL(result.data.hangoutLink).hostname === "meet.google.com" && new URL(result.data.hangoutLink).protocol === "https:"
+    ? result.data.hangoutLink : undefined;
+  return { providerObjectId: result.data.id, providerLink: safeLink, ...(meetStatus ? { meetStatus } : {}), ...(meetLink ? { meetLink } : {}) };
 }

@@ -6,12 +6,12 @@ export async function recordCalendarOutcome(
   userId: string,
   planId: string,
   actionId: string,
-  outcome: { status: "succeeded"; providerObjectId: string; providerLink?: string } | { status: "failed" | "unknown"; errorCode: string },
+  outcome: { status: "succeeded"; providerObjectId: string; providerLink?: string; meetStatus?: "confirmed" | "pending" | "failed"; meetLink?: string } | { status: "failed" | "unknown"; errorCode: string },
 ) {
   await getDb().transaction(async (tx) => {
     const [updated] = await tx.update(actions).set(outcome.status === "succeeded" ? {
       status: "succeeded", provider: "google_calendar", providerObjectId: outcome.providerObjectId,
-      providerLink: outcome.providerLink ?? null, completedAt: new Date(),
+      providerLink: outcome.providerLink ?? null, meetStatus: outcome.meetStatus ?? null, meetLink: outcome.meetLink ?? null, completedAt: new Date(),
     } : {
       status: outcome.status, provider: "google_calendar", errorCode: outcome.errorCode, completedAt: new Date(),
     }).where(and(eq(actions.id, actionId), eq(actions.planId, planId), eq(actions.userId, userId), eq(actions.status, "executing"))).returning({ id: actions.id });

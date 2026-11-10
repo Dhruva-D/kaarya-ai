@@ -6,8 +6,8 @@ export type CalendarPlan = {
   status: "awaiting_approval" | "executing" | "succeeded" | "failed" | "unknown" | "rejected" | "superseded" | "expired" | "draft" | "needs_details";
   expiresAt: string;
   canonicalHash: string;
-  action: { tool: "calendar.create_event"; args: { title: string; startIso: string; endIso: string; timezone: string } };
-  receipt: { status: string; providerObjectId?: string | null; providerLink?: string | null; errorCode?: string | null };
+  action: { tool: "calendar.create_event"; args: { title: string; startIso: string; endIso: string; timezone: string; attendees?: string[]; addMeet?: boolean } };
+  receipt: { status: string; providerObjectId?: string | null; providerLink?: string | null; meetStatus?: "confirmed" | "pending" | "failed" | null; meetLink?: string | null; errorCode?: string | null };
 };
 export type CalendarHistoryItem = {
   planId: string;

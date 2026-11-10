@@ -22,6 +22,9 @@ describe("Calendar plan review", () => {
     expect(() => validateCalendarProposal(action, "UTC", now)).toThrow(/timezone/);
     expect(() => validateCalendarProposal(action, "Asia/Kolkata", new Date("2026-11-11T00:00:00Z"))).toThrow(/future/);
     expect(() => validateCalendarProposal({ ...action, args: { ...action.args, endIso: "2026-11-11T04:00:00+05:30" } }, "Asia/Kolkata", now)).toThrow(/duration/);
+    const guestAction = { ...action, args: { ...action.args, attendees: ["guest@example.com"] } };
+    expect(() => validateCalendarProposal(guestAction, "Asia/Kolkata", now, ["Invite guest@example.com"])).not.toThrow();
+    expect(() => validateCalendarProposal(guestAction, "Asia/Kolkata", now, ["Invite someone"])).toThrow(/Guest email/);
   });
 
   it("closes approval at expiry and fails closed on invalid timestamps", () => {

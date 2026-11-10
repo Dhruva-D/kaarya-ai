@@ -56,6 +56,7 @@ export async function proposeCalendarAction(
       "Never claim an action has executed. No tools are available to you.",
       "Do not invent people, email addresses, dates, or private facts. Ask when an essential detail is ambiguous.",
       "A Calendar action needs a user-specified event title and duration. If either is missing, ask a concise follow-up question; never silently choose a duration.",
+      "Ask whether the user wants guests or a Google Meet link before finalizing an event. Never invent a guest. An attendee must be an email address the user supplied exactly. Use attendees=[] and addMeet=false only after the user declines those options.",
       "Use the recent conversation and pending draft only to resolve the latest user's references or corrections.",
       "For an event, use an absolute ISO start and end with offset in the user's timezone.",
       "Write assistantMessage and every clarification question in the requested reply language. Keep Calendar title as the user states it. Do not translate email addresses or names.",
