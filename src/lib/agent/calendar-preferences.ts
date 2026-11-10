@@ -25,8 +25,8 @@ export function calendarPreferencesNeedConfirmation(userTurns: string[], action:
   let meetChoice: boolean | null = null;
   for (const turn of userTurns) {
     const emails = [...turn.matchAll(emailPattern)].map((match) => match[0].toLowerCase());
-    if (emails.length) guestChoice = { emails };
-    else if (noGuests.test(turn)) guestChoice = { emails: [] };
+    if (noGuests.test(turn)) guestChoice = { emails: [] };
+    else if (emails.length) guestChoice = { emails };
     if (noMeet.test(turn)) meetChoice = false;
     else if (yesMeet.test(turn)) meetChoice = true;
   }

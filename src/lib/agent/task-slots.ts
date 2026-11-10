@@ -2,7 +2,7 @@ import type { TaskAction } from "./plan";
 import type { SpeechLanguage } from "@/lib/integrations/gnani/tts";
 
 const timeExpression = /\b(?:at\s+)?\d{1,2}(?::\d{2})?\s*(?:am|pm)\b|\b(?:at|around)\s+\d{1,2}(?::\d{2})?\b|\d+\s*(?:बजे|ಗಂಟೆಗೆ|மணிக்கு|గంటలకు|മണിക്ക്|वाजता|টায়|વાગ્યે|ਵਜੇ)/iu;
-const dateOnlyConsent = /\b(?:date only|without (?:a )?reminder|no (?:timed )?alarm)\b|केवल तारीख|सिर्फ तारीख|ದಿನಾಂಕ ಮಾತ್ರ|தேதி மட்டும்|తేదీ మాత్రమే|തീയതി മാത്രം|फक्त तारीख|শুধু তারিখ|ફક્ત તારીખ|ਸਿਰਫ਼ ਮਿਤੀ/iu;
+const dateOnlyConsent = /\b(?:date[- ]only|without (?:a )?reminder|no (?:timed )?alarm)\b|केवल तारीख|सिर्फ तारीख|ದಿನಾಂಕ ಮಾತ್ರ|தேதி மட்டும்|తేదీ మాత్రమే|തീയതി മാത്രം|फक्त तारीख|শুধু তারিখ|ફક્ત તારીખ|ਸਿਰਫ਼ ਮਿਤੀ/iu;
 const genericTitles = new Set(["task", "a task", "reminder", "काम", "ಕಾರ್ಯ"]);
 
 const titleQuestions: Record<SpeechLanguage, string> = {
@@ -29,7 +29,13 @@ export function missingTaskDetails(userTurns: string[], action: TaskAction): Arr
   const title = action.args.title.trim().normalize("NFKC").toLocaleLowerCase();
   const missing: Array<"title" | "timed"> = [];
   if (!title || genericTitles.has(title) || !source.includes(title)) missing.push("title");
-  if (userTurns.some((turn) => timeExpression.test(turn)) && !userTurns.some((turn) => dateOnlyConsent.test(turn))) missing.push("timed");
+  const taskSegments = userTurns.map((turn) => {
+    const taskMarker = /\b(?:task|remind(?:er)?)\b/giu;
+    const positions = [...turn.matchAll(taskMarker)];
+    const scoped = positions.length ? turn.slice(positions.at(-1)!.index) : turn;
+    return scoped.split(/\b(?:calendar|event|meeting)\b/iu, 1)[0];
+  });
+  if (taskSegments.some((turn) => timeExpression.test(turn)) && !userTurns.some((turn) => dateOnlyConsent.test(turn))) missing.push("timed");
   return missing;
 }
 

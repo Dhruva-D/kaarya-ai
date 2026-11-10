@@ -19,4 +19,7 @@ describe("Calendar guest and Meet decisions", () => {
     expect(calendarPreferencesNeedConfirmation(["Invite guest@example.com", "Add a Google Meet link"], invited)).toBe(false);
     expect(calendarPreferencesNeedConfirmation(["Invite someone", "Add a Google Meet link"], invited)).toBe(true);
   });
+  it("does not treat a separate Gmail recipient as a Calendar guest after no guests", () => {
+    expect(calendarPreferencesNeedConfirmation(["No guests and no Google Meet. Also email test@example.com"], action)).toBe(false);
+  });
 });

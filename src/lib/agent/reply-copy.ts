@@ -29,6 +29,19 @@ const mailReview: Record<SpeechLanguage, string> = {
   "ta-IN": "அனுப்பும் முன் மின்னஞ்சல் விவரங்களைச் சரிபார்க்கவும்.", "te-IN": "పంపే ముందు ఇమెయిల్ వివరాలను పరిశీలించండి.",
 };
 
+const batchReview: Record<SpeechLanguage, string> = {
+  "bn-IN": "এগিয়ে যাওয়ার আগে দুটি কাজই দেখে নিন।",
+  "en-IN": "Please review both actions before I carry them out.",
+  "gu-IN": "આગળ વધતા પહેલાં બંને કાર્યો તપાસો.",
+  "hi-IN": "आगे बढ़ने से पहले दोनों कार्यों की जानकारी जाँच लें।",
+  "kn-IN": "ಮುಂದುವರಿಯುವ ಮೊದಲು ಎರಡೂ ಕೆಲಸಗಳ ವಿವರಗಳನ್ನು ಪರಿಶೀಲಿಸಿ.",
+  "ml-IN": "തുടരുന്നതിന് മുമ്പ് രണ്ട് പ്രവർത്തനങ്ങളും പരിശോധിക്കുക.",
+  "mr-IN": "पुढे जाण्यापूर्वी दोन्ही कृती तपासा.",
+  "pa-IN": "ਅੱਗੇ ਵਧਣ ਤੋਂ ਪਹਿਲਾਂ ਦੋਵੇਂ ਕੰਮਾਂ ਦੀ ਜਾਂਚ ਕਰੋ।",
+  "ta-IN": "தொடர்வதற்கு முன் இரண்டு செயல்களையும் சரிபார்க்கவும்.",
+  "te-IN": "కొనసాగించే ముందు రెండు చర్యల వివరాలను పరిశీలించండి.",
+};
+
 const unsupported: Record<SpeechLanguage, string> = {
   "bn-IN": "আমি এখন এই অনুরোধে সাহায্য করতে পারছি না।",
   "en-IN": "I can't help with this request right now.",
@@ -42,6 +55,6 @@ const unsupported: Record<SpeechLanguage, string> = {
   "te-IN": "ప్రస్తుతం ఈ అభ్యర్థనలో సహాయం చేయలేను.",
 };
 
-export function replyCopy(kind: "review" | "task_review" | "mail_review" | "unsupported", language?: SpeechLanguage): string {
-  return (kind === "review" ? review : kind === "task_review" ? taskReview : kind === "mail_review" ? mailReview : unsupported)[language ?? "en-IN"];
+export function replyCopy(kind: "review" | "task_review" | "mail_review" | "batch_review" | "unsupported", language?: SpeechLanguage): string {
+  return (kind === "review" ? review : kind === "task_review" ? taskReview : kind === "mail_review" ? mailReview : kind === "batch_review" ? batchReview : unsupported)[language ?? "en-IN"];
 }

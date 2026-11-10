@@ -11,7 +11,7 @@ export function ActionHistory({ items }: { items: ActionHistoryItem[] }) {
     <section aria-labelledby="recent-actions-title" className="mt-5 border-t border-[#E3E7E3] pt-5">
       <h3 className="text-xs font-semibold uppercase tracking-[0.12em] text-[#5A6664]" id="recent-actions-title">Recent actions</h3>
       <ol className="mt-3 space-y-3">
-        {items.map((item) => <li className="rounded-[10px] border border-[#E3E7E3] bg-white p-3" key={item.planId}>
+        {items.map((item) => <li className="rounded-[10px] border border-[#E3E7E3] bg-white p-3" key={item.actionId}>
           <div className="flex items-start justify-between gap-2">
             <p className="min-w-0 break-words text-sm font-semibold text-[#222A2B]">{item.title}</p>
             <span className={`shrink-0 text-xs font-medium ${item.status === "succeeded" ? "text-[#166B61]" : "text-[#8E392F]"}`}>{statusLabel(item)}</span>

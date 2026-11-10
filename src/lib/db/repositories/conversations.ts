@@ -19,11 +19,12 @@ export async function getOwnedConversation(userId: string, id: string) {
   const [plan] = await db.select().from(actionPlans)
     .where(and(eq(actionPlans.conversationId, id), eq(actionPlans.userId, userId)))
     .orderBy(desc(actionPlans.createdAt)).limit(1);
-  const [action] = plan ? await db.select().from(actions)
-    .where(and(eq(actions.planId, plan.id), eq(actions.userId, userId))).limit(1) : [];
+  const planActions = plan ? await db.select().from(actions)
+    .where(and(eq(actions.planId, plan.id), eq(actions.userId, userId))).orderBy(actions.sequenceNo).limit(2) : [];
   const historyRows = await db.select({
     planId: actionPlans.id,
-    status: actionPlans.status,
+    actionId: actions.id,
+    status: actions.status,
     type: actions.type,
     args: actions.argumentsJson,
     providerObjectId: actions.providerObjectId,
@@ -32,26 +33,27 @@ export async function getOwnedConversation(userId: string, id: string) {
     .where(and(
       eq(actionPlans.conversationId, id),
       eq(actionPlans.userId, userId),
-      inArray(actionPlans.status, ["succeeded", "failed", "unknown"]),
-    )).orderBy(desc(actionPlans.createdAt)).limit(10);
+      inArray(actions.status, ["succeeded", "failed", "unknown"]),
+    )).orderBy(desc(actionPlans.createdAt), actions.sequenceNo).limit(10);
   return {
     ...conversation,
     messages: turns,
-    plan: plan && action ? {
+    plan: plan && planActions.length ? {
       id: plan.id,
       version: plan.version,
       status: plan.status,
       expiresAt: plan.expiresAt.toISOString(),
       canonicalHash: plan.canonicalHash,
-      action: { tool: action.type, args: action.argumentsJson },
-      receipt: { status: action.status, providerObjectId: action.providerObjectId, providerLink: action.providerLink, meetStatus: action.meetStatus, meetLink: action.meetLink, errorCode: action.errorCode },
+      action: { tool: planActions[0].type, args: planActions[0].argumentsJson },
+      receipt: { status: planActions[0].status, providerObjectId: planActions[0].providerObjectId, providerLink: planActions[0].providerLink, meetStatus: planActions[0].meetStatus, meetLink: planActions[0].meetLink, errorCode: planActions[0].errorCode },
+      actions: planActions.map((item) => ({ id: item.id, action: { tool: item.type, args: item.argumentsJson }, receipt: { status: item.status, providerObjectId: item.providerObjectId, providerLink: item.providerLink, meetStatus: item.meetStatus, meetLink: item.meetLink, errorCode: item.errorCode } })),
     } : null,
     history: historyRows.flatMap((row) => {
       if (row.status !== "succeeded" && row.status !== "failed" && row.status !== "unknown") return [];
       const item = row.type === "tasks.create_task" ? toTaskHistoryItem({ ...row, status: row.status })
         : row.type === "gmail.send" ? toMailHistoryItem({ ...row, status: row.status })
           : toCalendarHistoryItem({ ...row, status: row.status });
-      return item ? [item] : [];
+      return item ? [{ ...item, actionId: row.actionId }] : [];
     }),
   };
 }

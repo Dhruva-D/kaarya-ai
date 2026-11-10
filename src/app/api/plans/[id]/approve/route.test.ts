@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   getCalendarAuth: vi.fn(),
   getTasksAuth: vi.fn(),
   getGmailAuth: vi.fn(),
-  getOwnedPendingActionType: vi.fn(),
+  getOwnedPendingActionTypes: vi.fn(),
   claimActionPlan: vi.fn(),
   createCalendarEvent: vi.fn(),
   createGoogleTask: vi.fn(),
@@ -20,17 +20,18 @@ vi.mock("@/lib/integrations/google/connection", () => ({
   getGmailAuth: mocks.getGmailAuth,
   CalendarConnectionUnavailable: class extends Error {},
 }));
-vi.mock("@/lib/db/repositories/plans", () => ({ claimActionPlan: mocks.claimActionPlan, getOwnedPendingActionType: mocks.getOwnedPendingActionType }));
+vi.mock("@/lib/db/repositories/plans", () => ({ claimActionPlan: mocks.claimActionPlan, getOwnedPendingActionTypes: mocks.getOwnedPendingActionTypes }));
 vi.mock("@/lib/integrations/google/calendar", () => ({
   createCalendarEvent: mocks.createCalendarEvent,
   CalendarWriteError: class extends Error {},
 }));
-vi.mock("@/lib/integrations/google/tasks", () => ({ createGoogleTask: mocks.createGoogleTask, TaskWriteError: class extends Error {} }));
+vi.mock("@/lib/integrations/google/tasks", () => ({ createGoogleTask: mocks.createGoogleTask, TaskWriteError: class extends Error { outcome: "failed" | "unknown"; constructor(outcome: "failed" | "unknown") { super("test provider error"); this.outcome = outcome; } } }));
 vi.mock("@/lib/integrations/google/gmail", () => ({ sendGmailMessage: mocks.sendGmailMessage, GmailWriteError: class extends Error {} }));
 vi.mock("@/lib/db/repositories/action-outcome", () => ({ recordActionOutcome: mocks.recordActionOutcome }));
 
 import { POST } from "./route";
-import { canonicalActionHash } from "@/lib/agent/plan";
+import { canonicalActionHash, canonicalPlanHash } from "@/lib/agent/plan";
+import { TaskWriteError } from "@/lib/integrations/google/tasks";
 
 const planId = "11111111-1111-4111-8111-111111111111";
 const approval = {
@@ -56,7 +57,8 @@ describe("Calendar approval route guards", () => {
     mocks.getCalendarAuth.mockResolvedValue({});
     mocks.getTasksAuth.mockResolvedValue({});
     mocks.getGmailAuth.mockResolvedValue({});
-    mocks.getOwnedPendingActionType.mockResolvedValue("calendar.create_event");
+    mocks.recordActionOutcome.mockResolvedValue(undefined);
+    mocks.getOwnedPendingActionTypes.mockResolvedValue(["calendar.create_event"]);
   });
 
   afterEach(() => {
@@ -94,15 +96,15 @@ describe("Calendar approval route guards", () => {
   it("executes one owned, exact-hash Task only with Tasks credentials", async () => {
     const task = { tool: "tasks.create_task" as const, args: { title: "Prepare synthetic demo", dueDate: "2026-11-11" } };
     const taskApproval = { ...approval, canonicalHash: canonicalActionHash(task) };
-    mocks.getOwnedPendingActionType.mockResolvedValue("tasks.create_task");
+    mocks.getOwnedPendingActionTypes.mockResolvedValue(["tasks.create_task"]);
     mocks.claimActionPlan.mockResolvedValue({
       plan: { canonicalHash: taskApproval.canonicalHash },
-      action: { id: "33333333-3333-4333-8333-333333333333", type: task.tool, argumentsJson: task.args },
+      actions: [{ id: "33333333-3333-4333-8333-333333333333", type: task.tool, argumentsJson: task.args, sequenceNo: 0 }],
     });
     mocks.createGoogleTask.mockResolvedValue({ providerObjectId: "real-task-id" });
     const response = await POST(request(undefined, taskApproval), context);
     expect(response.status).toBe(200);
-    expect((await response.json()).providerObjectId).toBe("real-task-id");
+    expect((await response.json()).results).toEqual([{ actionId: "33333333-3333-4333-8333-333333333333", status: "succeeded", provider: "google_tasks" }]);
     expect(mocks.getTasksAuth).toHaveBeenCalledWith("owner-A");
     expect(mocks.getCalendarAuth).not.toHaveBeenCalled();
     expect(mocks.createGoogleTask).toHaveBeenCalledOnce();
@@ -110,10 +112,10 @@ describe("Calendar approval route guards", () => {
   });
 
   it("does not load credentials or write for an unowned Task plan", async () => {
-    mocks.getOwnedPendingActionType.mockResolvedValue(null);
+    mocks.getOwnedPendingActionTypes.mockResolvedValue([]);
     const response = await POST(request(), context);
     expect(response.status).toBe(409);
-    expect(mocks.getOwnedPendingActionType).toHaveBeenCalledWith(planId, "owner-A");
+    expect(mocks.getOwnedPendingActionTypes).toHaveBeenCalledWith(planId, "owner-A");
     expect(mocks.getTasksAuth).not.toHaveBeenCalled();
     expect(mocks.claimActionPlan).not.toHaveBeenCalled();
     expect(mocks.createGoogleTask).not.toHaveBeenCalled();
@@ -122,18 +124,69 @@ describe("Calendar approval route guards", () => {
   it("sends only the exact approved Gmail action through Gmail scope", async () => {
     const mail = { tool: "gmail.send" as const, args: { to: "test@example.com", subject: "Synthetic update", body: "This is a synthetic test." } };
     const mailApproval = { ...approval, canonicalHash: canonicalActionHash(mail) };
-    mocks.getOwnedPendingActionType.mockResolvedValue("gmail.send");
+    mocks.getOwnedPendingActionTypes.mockResolvedValue(["gmail.send"]);
     mocks.claimActionPlan.mockResolvedValue({
       plan: { canonicalHash: mailApproval.canonicalHash },
-      action: { id: "33333333-3333-4333-8333-333333333333", type: mail.tool, argumentsJson: mail.args },
+      actions: [{ id: "33333333-3333-4333-8333-333333333333", type: mail.tool, argumentsJson: mail.args, sequenceNo: 0 }],
     });
     mocks.sendGmailMessage.mockResolvedValue({ providerObjectId: "gmail-message-id" });
     const response = await POST(request(undefined, mailApproval), context);
     expect(response.status).toBe(200);
-    expect((await response.json()).providerObjectId).toBe("gmail-message-id");
+    expect((await response.json()).results).toEqual([{ actionId: "33333333-3333-4333-8333-333333333333", status: "succeeded", provider: "gmail" }]);
     expect(mocks.getGmailAuth).toHaveBeenCalledWith("owner-A");
     expect(mocks.getCalendarAuth).not.toHaveBeenCalled();
     expect(mocks.getTasksAuth).not.toHaveBeenCalled();
     expect(mocks.sendGmailMessage).toHaveBeenCalledWith(mail, {});
+  });
+
+  it("binds both actions to one approval and saves separate receipts in order", async () => {
+    const task = { tool: "tasks.create_task" as const, args: { title: "Prepare synthetic notes", dueDate: "2026-11-11" } };
+    const mail = { tool: "gmail.send" as const, args: { to: "test@example.com", subject: "Synthetic update", body: "Synthetic content." } };
+    const batchApproval = { ...approval, canonicalHash: canonicalPlanHash([task, mail]) };
+    mocks.getOwnedPendingActionTypes.mockResolvedValue([task.tool, mail.tool]);
+    mocks.claimActionPlan.mockResolvedValue({ plan: { canonicalHash: batchApproval.canonicalHash }, actions: [
+      { id: "33333333-3333-4333-8333-333333333333", type: task.tool, argumentsJson: task.args, sequenceNo: 0 },
+      { id: "44444444-4444-4444-8444-444444444444", type: mail.tool, argumentsJson: mail.args, sequenceNo: 1 },
+    ] });
+    mocks.createGoogleTask.mockResolvedValue({ providerObjectId: "task-id" });
+    mocks.sendGmailMessage.mockResolvedValue({ providerObjectId: "mail-id" });
+    const response = await POST(request(undefined, batchApproval), context);
+    expect(response.status).toBe(200);
+    expect((await response.json()).status).toBe("succeeded");
+    expect(mocks.recordActionOutcome).toHaveBeenCalledTimes(2);
+    expect(mocks.createGoogleTask).toHaveBeenCalledBefore(mocks.sendGmailMessage);
+  });
+
+  it("refuses a changed second action before any external write", async () => {
+    const task = { tool: "tasks.create_task" as const, args: { title: "Prepare synthetic notes" } };
+    const mail = { tool: "gmail.send" as const, args: { to: "test@example.com", subject: "Synthetic update", body: "Synthetic content." } };
+    const batchApproval = { ...approval, canonicalHash: canonicalPlanHash([task, mail]) };
+    mocks.getOwnedPendingActionTypes.mockResolvedValue([task.tool, mail.tool]);
+    mocks.claimActionPlan.mockResolvedValue({ plan: { canonicalHash: batchApproval.canonicalHash }, actions: [
+      { id: "33333333-3333-4333-8333-333333333333", type: task.tool, argumentsJson: task.args, sequenceNo: 0 },
+      { id: "44444444-4444-4444-8444-444444444444", type: mail.tool, argumentsJson: { ...mail.args, to: "changed@example.com" }, sequenceNo: 1 },
+    ] });
+    const response = await POST(request(undefined, batchApproval), context);
+    expect(response.status).toBe(409);
+    expect(mocks.createGoogleTask).not.toHaveBeenCalled();
+    expect(mocks.sendGmailMessage).not.toHaveBeenCalled();
+  });
+
+  it("records a successful first action when the second provider rejects", async () => {
+    const mail = { tool: "gmail.send" as const, args: { to: "test@example.com", subject: "Synthetic update", body: "Synthetic content." } };
+    const task = { tool: "tasks.create_task" as const, args: { title: "Prepare synthetic notes" } };
+    const batchApproval = { ...approval, canonicalHash: canonicalPlanHash([mail, task]) };
+    mocks.getOwnedPendingActionTypes.mockResolvedValue([mail.tool, task.tool]);
+    mocks.claimActionPlan.mockResolvedValue({ plan: { canonicalHash: batchApproval.canonicalHash }, actions: [
+      { id: "33333333-3333-4333-8333-333333333333", type: mail.tool, argumentsJson: mail.args, sequenceNo: 0 },
+      { id: "44444444-4444-4444-8444-444444444444", type: task.tool, argumentsJson: task.args, sequenceNo: 1 },
+    ] });
+    mocks.sendGmailMessage.mockResolvedValue({ providerObjectId: "mail-id" });
+    mocks.createGoogleTask.mockRejectedValue(new TaskWriteError("failed", "test provider error"));
+    const response = await POST(request(undefined, batchApproval), context);
+    expect(response.status).toBe(207);
+    expect((await response.json()).status).toBe("partial");
+    expect(mocks.recordActionOutcome).toHaveBeenNthCalledWith(1, "owner-A", planId, "33333333-3333-4333-8333-333333333333", "gmail", { status: "succeeded", providerObjectId: "mail-id" });
+    expect(mocks.recordActionOutcome).toHaveBeenNthCalledWith(2, "owner-A", planId, "44444444-4444-4444-8444-444444444444", "google_tasks", { status: "failed", errorCode: "GOOGLE_REJECTED" });
   });
 });

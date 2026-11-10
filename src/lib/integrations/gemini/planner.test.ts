@@ -47,6 +47,14 @@ describe("Gemini proposal adapter", () => {
     expect(result.proposal.actions).toEqual([mail]);
   });
 
+  it("accepts exactly two ordered actions and rejects a third", async () => {
+    const task = { tool: "tasks.create_task", args: { title: "Prepare synthetic notes" } };
+    const response = (actions: unknown[]) => async () => ({ status: "completed", output_text: JSON.stringify({ kind: "action_plan", assistantMessage: "Review both actions", questions: [], actions }) });
+    const result = await proposeAction(input, { apiKey: "test-key", createInteraction: response([action, task]) });
+    expect(result.proposal.actions).toEqual([action, task]);
+    await expect(proposeAction(input, { apiKey: "test-key", createInteraction: response([action, task, task]) })).rejects.toMatchObject({ reason: "invalid_response" });
+  });
+
   it("rejects missing questions, reversed times and incomplete responses", async () => {
     const clarification = async () => ({ status: "completed", output_text: JSON.stringify({ kind: "needs_clarification", assistantMessage: "When?", questions: [], actions: [] }) });
     await expect(proposeAction(input, { apiKey: "test-key", createInteraction: clarification })).rejects.toMatchObject({ reason: "invalid_response" });

@@ -24,6 +24,12 @@ export function canonicalActionHash(action: ProposedAction): string {
   return createHash("sha256").update(JSON.stringify(action)).digest("hex");
 }
 
+export function canonicalPlanHash(actions: ProposedAction[]): string {
+  if (actions.length < 1 || actions.length > 2) throw new Error("A plan needs one or two actions");
+  return actions.length === 1 ? canonicalActionHash(actions[0])
+    : createHash("sha256").update(JSON.stringify(actions)).digest("hex");
+}
+
 export function validateCalendarProposal(
   action: CalendarAction,
   userTimezone: string,

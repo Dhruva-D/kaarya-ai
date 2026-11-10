@@ -42,10 +42,10 @@ export const proposalSchema = z.strictObject({
   kind: z.enum(["action_plan", "needs_clarification", "unsupported"]),
   assistantMessage: z.string().trim().min(1).max(500),
   questions: z.array(z.string().trim().min(1).max(200)).max(3),
-  actions: z.array(proposedActionSchema).max(1),
+  actions: z.array(proposedActionSchema).max(2),
 }).superRefine((value, ctx) => {
-  if (value.kind === "action_plan" && value.actions.length !== 1) {
-    ctx.addIssue({ code: "custom", message: "An action plan requires one action" });
+  if (value.kind === "action_plan" && (value.actions.length < 1 || value.actions.length > 2)) {
+    ctx.addIssue({ code: "custom", message: "An action plan requires one or two actions" });
   }
   if (value.kind !== "action_plan" && value.actions.length !== 0) {
     ctx.addIssue({ code: "custom", message: "Only action plans may include actions" });
@@ -69,7 +69,7 @@ export const providerProposalSchema = {
     questions: { type: "array", items: { type: "string" } },
     actions: {
       type: "array",
-      maxItems: 1,
+      maxItems: 2,
       items: { anyOf: [
         {
           type: "object", title: "CalendarEvent",

@@ -1,6 +1,6 @@
 export type ConversationSummary = { id: string; title: string; updatedAt: string };
 export type Turn = { id: string; role: "user" | "assistant"; content: string; languageCode: string | null; createdAt: string };
-type PlanBase = {
+export type PlanBase = {
   id: string;
   version: number;
   status: "awaiting_approval" | "executing" | "succeeded" | "failed" | "unknown" | "rejected" | "superseded" | "expired" | "draft" | "needs_details";
@@ -17,7 +17,9 @@ export type TaskPlan = PlanBase & {
 export type MailPlan = PlanBase & {
   action: { tool: "gmail.send"; args: { to: string; subject: string; body: string } };
 };
-export type ActionPlan = CalendarPlan | TaskPlan | MailPlan;
+export type PlanAction = CalendarPlan["action"] | TaskPlan["action"] | MailPlan["action"];
+export type BatchPlan = PlanBase & { action: PlanAction; actions: Array<{ id: string; action: PlanAction; receipt: PlanBase["receipt"] }> };
+export type ActionPlan = (CalendarPlan | TaskPlan | MailPlan | BatchPlan) & { actions?: BatchPlan["actions"] };
 export type CalendarHistoryItem = {
   tool: "calendar.create_event";
   planId: string;
@@ -30,7 +32,7 @@ export type CalendarHistoryItem = {
 };
 export type TaskHistoryItem = { planId: string; status: "succeeded" | "failed" | "unknown"; title: string; dueDate?: string; providerObjectId: string | null; providerLink: string | null; tool: "tasks.create_task" };
 export type MailHistoryItem = { planId: string; status: "succeeded" | "failed" | "unknown"; title: string; to: string; providerObjectId: string | null; providerLink: null; tool: "gmail.send" };
-export type ActionHistoryItem = CalendarHistoryItem | TaskHistoryItem | MailHistoryItem;
+export type ActionHistoryItem = (CalendarHistoryItem | TaskHistoryItem | MailHistoryItem) & { actionId: string };
 export type ConversationDetail = { id: string; title: string; messages: Turn[]; plan: ActionPlan | null; history: ActionHistoryItem[] };
 
 export async function readApiError(response: Response): Promise<string> {

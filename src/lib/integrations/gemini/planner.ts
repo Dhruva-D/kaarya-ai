@@ -52,7 +52,7 @@ export async function proposeAction(
     ].join("\n"),
     system_instruction: [
       "You are Kaarya's proposal parser. Return only the JSON object matching the schema.",
-      "You may propose one Calendar event, one Google Task, or one Gmail send, ask a precise follow-up question, or say the request is unsupported.",
+      "You may propose one or two independent actions from Calendar event, Google Task, or Gmail send, ask a precise follow-up question, or say the request is unsupported. Include both actions when the user explicitly requests both, in their requested order.",
       "Never claim an action has executed. No tools are available to you.",
       "Do not invent people, email addresses, dates, or private facts. Ask when an essential detail is ambiguous.",
       "A Calendar action needs a user-specified event title and duration. If either is missing, ask a concise follow-up question; never silently choose a duration.",

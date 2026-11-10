@@ -3,7 +3,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "../db/client";
 import { actionPlans, actions, conversations, messages, profiles } from "../db/schema";
 import { proposeAction } from "../integrations/gemini/planner";
-import { canonicalActionHash, validateCalendarProposal } from "./plan";
+import { canonicalPlanHash, validateCalendarProposal, type ProposedAction } from "./plan";
 import type { ChatRequest } from "./chat-request";
 import { replyCopy } from "./reply-copy";
 import { calendarDetailQuestion, missingCalendarDetails } from "./calendar-slots";
@@ -31,28 +31,33 @@ export async function handleChat(userId: string, request: ChatRequest) {
   const [pendingPlan] = request.conversationId ? await db.select({ id: actionPlans.id }).from(actionPlans)
     .where(and(eq(actionPlans.conversationId, request.conversationId), eq(actionPlans.userId, userId), eq(actionPlans.status, "awaiting_approval")))
     .orderBy(desc(actionPlans.createdAt)).limit(1) : [];
-  const [pendingAction] = pendingPlan ? await db.select({ type: actions.type, args: actions.argumentsJson }).from(actions)
-    .where(and(eq(actions.planId, pendingPlan.id), eq(actions.userId, userId))).limit(1) : [];
+  const pendingActions = pendingPlan ? await db.select({ type: actions.type, args: actions.argumentsJson }).from(actions)
+    .where(and(eq(actions.planId, pendingPlan.id), eq(actions.userId, userId))).orderBy(actions.sequenceNo).limit(2) : [];
   const { proposal, model } = await proposeAction(
     {
       text: request.text, timezone, nowIso: new Date().toISOString(), languageCode: request.languageCode,
       recentTurns: recent.reverse().map((turn) => ({ role: turn.role, content: turn.content.slice(0, 1_000) })),
-      pendingAction: pendingAction ? { tool: pendingAction.type, args: pendingAction.args } : undefined,
+      pendingAction: pendingActions.length ? pendingActions.map((item) => ({ tool: item.type, args: item.args })) : undefined,
     },
     { apiKey: process.env.GEMINI_API_KEY ?? "", model: process.env.GEMINI_MODEL },
   );
-  let action = proposal.kind === "action_plan" ? proposal.actions[0] : undefined;
+  let proposed = proposal.kind === "action_plan" ? proposal.actions : [];
   const userTurns = [...recent.filter((turn) => turn.role === "user").map((turn) => turn.content), request.text];
-  const missingDetails = action?.tool === "calendar.create_event" ? missingCalendarDetails(userTurns, action.args.title) : [];
-  const missingTask = action?.tool === "tasks.create_task" ? missingTaskDetails(userTurns, action) : [];
-  const missingRecipient = action?.tool === "gmail.send" && !recipientWasSupplied(action, userTurns);
-  const missingPreferences = action?.tool === "calendar.create_event" && !missingDetails.length ? calendarPreferencesNeedConfirmation(userTurns, action) : false;
-  if (missingDetails.length || missingTask.length || missingPreferences || missingRecipient) action = undefined;
-  if (action) {
+  const calendar = proposed.find((item) => item.tool === "calendar.create_event");
+  const task = proposed.find((item) => item.tool === "tasks.create_task");
+  const mail = proposed.find((item) => item.tool === "gmail.send");
+  const missingDetails = calendar ? missingCalendarDetails(userTurns, calendar.args.title) : [];
+  const missingTask = task ? missingTaskDetails(userTurns, task) : [];
+  const missingRecipient = mail ? !recipientWasSupplied(mail, userTurns) : false;
+  const missingPreferences = calendar && !missingDetails.length ? calendarPreferencesNeedConfirmation(userTurns, calendar) : false;
+  if (missingDetails.length || missingTask.length || missingPreferences || missingRecipient) proposed = [];
+  if (proposed.length) {
     try {
-      if (action.tool === "calendar.create_event") validateCalendarProposal(action, timezone, new Date(), userTurns);
-      else if (action.tool === "tasks.create_task") validateTaskProposal(action);
-      else validateMailProposal(action, userTurns);
+      for (const action of proposed) {
+        if (action.tool === "calendar.create_event") validateCalendarProposal(action, timezone, new Date(), userTurns);
+        else if (action.tool === "tasks.create_task") validateTaskProposal(action);
+        else validateMailProposal(action, userTurns);
+      }
     } catch {
       throw new UnsafeProposal("The proposed action needs clarification before it can be reviewed");
     }
@@ -65,14 +70,13 @@ export async function handleChat(userId: string, request: ChatRequest) {
       ? recipientQuestion(request.languageCode)
     : missingPreferences
       ? calendarPreferenceQuestion(request.languageCode)
-    : action
-    ? replyCopy(action.tool === "gmail.send" ? "mail_review" : action.tool === "tasks.create_task" ? "task_review" : "review", request.languageCode)
+    : proposed.length
+    ? proposed.length === 2 ? replyCopy("batch_review", request.languageCode) : replyCopy(proposed[0].tool === "gmail.send" ? "mail_review" : proposed[0].tool === "tasks.create_task" ? "task_review" : "review", request.languageCode)
     : proposal.kind === "needs_clarification"
       ? proposal.questions.join(" ")
       : replyCopy("unsupported", request.languageCode);
-  const planId = action ? randomUUID() : undefined;
-  const actionId = action ? randomUUID() : undefined;
-  const canonicalHash = action ? canonicalActionHash(action) : undefined;
+  const planId = proposed.length ? randomUUID() : undefined;
+  const canonicalHash = proposed.length ? canonicalPlanHash(proposed as ProposedAction[]) : undefined;
 
   const conversationId = await db.transaction(async (tx) => {
     let currentId = request.conversationId;
@@ -86,9 +90,9 @@ export async function handleChat(userId: string, request: ChatRequest) {
     await tx.insert(messages).values({ conversationId: currentId, userId, role: "assistant", content: assistantText, languageCode: request.languageCode ?? "en-IN", providerModel: model });
     await tx.update(conversations).set({ updatedAt: new Date() })
       .where(and(eq(conversations.id, currentId), eq(conversations.userId, userId)));
-    if (action && planId && actionId && canonicalHash) {
+    if (proposed.length && planId && canonicalHash) {
       await tx.insert(actionPlans).values({ id: planId, userId, conversationId: currentId, version: 1, status: "awaiting_approval", canonicalHash, expiresAt: new Date(Date.now() + 15 * 60_000) });
-      await tx.insert(actions).values({ id: actionId, planId, userId, type: action.tool, argumentsJson: action.args, status: "pending", executionKey: randomUUID() });
+      await tx.insert(actions).values(proposed.map((action, sequenceNo) => ({ id: randomUUID(), planId, userId, type: action.tool, argumentsJson: action.args, status: "pending" as const, executionKey: randomUUID(), sequenceNo })));
     }
     return currentId;
   });
@@ -98,6 +102,6 @@ export async function handleChat(userId: string, request: ChatRequest) {
     assistantText,
     resultType: missingDetails.length || missingTask.length || missingPreferences || missingRecipient ? "needs_clarification" : proposal.kind,
     questions: missingDetails.length || missingTask.length || missingPreferences || missingRecipient ? [assistantText] : proposal.questions,
-    plan: action && planId && canonicalHash ? { id: planId, version: 1, canonicalHash, action } : null,
+    plan: proposed.length && planId && canonicalHash ? { id: planId, version: 1, canonicalHash, actions: proposed } : null,
   };
 }
