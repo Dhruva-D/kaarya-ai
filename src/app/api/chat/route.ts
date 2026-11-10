@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { chatRequestSchema } from "@/lib/agent/chat-request";
 import { ConversationNotFound, handleChat, UnsafeProposal } from "@/lib/agent/chat-service";
+import { GeminiProposalError } from "@/lib/integrations/gemini/planner";
 import { isSameOriginPost } from "@/lib/security/origin";
 import { claimProviderBudget } from "@/lib/security/rate-limit";
 
@@ -21,6 +22,19 @@ export async function POST(request: Request) {
     if (error instanceof ConversationNotFound) return Response.json({ code: "NOT_FOUND", message: "Conversation not found" }, { status: 404 });
     if (error instanceof UnsafeProposal) return Response.json({ code: "NEEDS_CLARIFICATION", message: error.message }, { status: 422 });
     if ((error as { code?: string })?.code === "23505") return Response.json({ code: "DUPLICATE_REQUEST", message: "This message was already submitted" }, { status: 409 });
-    return Response.json({ code: "CHAT_UNAVAILABLE", message: "The assistant could not prepare a safe response. Please retry." }, { status: 503 });
+    if (error instanceof GeminiProposalError) {
+      console.warn("Gemini proposal failed", { reason: error.reason });
+      const responses = {
+        busy: { status: 503, code: "GEMINI_BUSY", message: "Gemini is temporarily busy. Your message is still here; please try Send again in a moment." },
+        rate_limited: { status: 503, code: "GEMINI_RATE_LIMITED", message: "Gemini is limiting requests right now. Your message is still here; please try again shortly." },
+        configuration: { status: 503, code: "GEMINI_CONFIGURATION", message: "The AI connection needs attention. Please check the server configuration." },
+        invalid_response: { status: 502, code: "GEMINI_INVALID_RESPONSE", message: "Gemini returned an unusable plan. Your message is still here; please try again." },
+        unavailable: { status: 503, code: "GEMINI_UNAVAILABLE", message: "Gemini could not be reached. Your message is still here; please try again." },
+      } as const;
+      const response = responses[error.reason];
+      return Response.json({ code: response.code, message: response.message }, { status: response.status });
+    }
+    console.error("Chat request failed outside Gemini", { errorType: error instanceof Error ? error.name : "unknown" });
+    return Response.json({ code: "CHAT_STORAGE_UNAVAILABLE", message: "Your conversation could not be saved right now. Your message is still here; please try again." }, { status: 503 });
   }
 }

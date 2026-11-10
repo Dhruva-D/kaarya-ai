@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { proposeCalendarAction } from "./planner";
+import { GeminiProposalError, proposeCalendarAction } from "./planner";
 
 const input = { text: "Schedule a project meeting tomorrow at 5 PM for 30 minutes", timezone: "Asia/Kolkata", nowIso: "2026-11-09T10:00:00+05:30" };
 const action = { tool: "calendar.create_event", args: { title: "Project meeting", startIso: "2026-11-10T17:00:00+05:30", endIso: "2026-11-10T17:30:00+05:30", timezone: "Asia/Kolkata" } };
@@ -21,17 +21,22 @@ describe("Gemini proposal adapter", () => {
 
   it("rejects unsupported tools and invented extra fields", async () => {
     const createInteraction = async () => ({ status: "completed", output_text: JSON.stringify({ kind: "action_plan", assistantMessage: "Sent it", questions: [], actions: [{ ...action, tool: "gmail.send" }] }) });
-    await expect(proposeCalendarAction(input, { apiKey: "test-key", createInteraction })).rejects.toThrow(/contract/);
+    await expect(proposeCalendarAction(input, { apiKey: "test-key", createInteraction })).rejects.toMatchObject({ reason: "invalid_response" });
     const extra = async () => ({ status: "completed", output_text: JSON.stringify({ kind: "action_plan", assistantMessage: "Review", questions: [], actions: [{ ...action, args: { ...action.args, hidden: true } }] }) });
-    await expect(proposeCalendarAction(input, { apiKey: "test-key", createInteraction: extra })).rejects.toThrow(/contract/);
+    await expect(proposeCalendarAction(input, { apiKey: "test-key", createInteraction: extra })).rejects.toMatchObject({ reason: "invalid_response" });
   });
 
   it("rejects missing questions, reversed times and incomplete responses", async () => {
     const clarification = async () => ({ status: "completed", output_text: JSON.stringify({ kind: "needs_clarification", assistantMessage: "When?", questions: [], actions: [] }) });
-    await expect(proposeCalendarAction(input, { apiKey: "test-key", createInteraction: clarification })).rejects.toThrow(/contract/);
+    await expect(proposeCalendarAction(input, { apiKey: "test-key", createInteraction: clarification })).rejects.toMatchObject({ reason: "invalid_response" });
     const reversed = async () => ({ status: "completed", output_text: JSON.stringify({ kind: "action_plan", assistantMessage: "Review", questions: [], actions: [{ ...action, args: { ...action.args, endIso: "2026-11-10T16:00:00+05:30" } }] }) });
-    await expect(proposeCalendarAction(input, { apiKey: "test-key", createInteraction: reversed })).rejects.toThrow(/contract/);
+    await expect(proposeCalendarAction(input, { apiKey: "test-key", createInteraction: reversed })).rejects.toMatchObject({ reason: "invalid_response" });
     const incomplete = async () => ({ status: "failed", output_text: "{}" });
-    await expect(proposeCalendarAction(input, { apiKey: "test-key", createInteraction: incomplete })).rejects.toThrow(/complete/);
+    await expect(proposeCalendarAction(input, { apiKey: "test-key", createInteraction: incomplete })).rejects.toMatchObject({ reason: "invalid_response" });
+  });
+
+  it("classifies temporary provider failure without exposing the provider body", async () => {
+    const createInteraction = async () => { throw Object.assign(new Error("provider detail"), { status: 503 }); };
+    await expect(proposeCalendarAction(input, { apiKey: "test-key", createInteraction })).rejects.toEqual(new GeminiProposalError("busy"));
   });
 });

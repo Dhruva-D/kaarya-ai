@@ -10,6 +10,20 @@ type CreateInteraction = (params: {
   store: false;
 }) => Promise<InteractionResult>;
 
+export class GeminiProposalError extends Error {
+  constructor(public readonly reason: "busy" | "rate_limited" | "configuration" | "invalid_response" | "unavailable") {
+    super(`Gemini proposal ${reason}`);
+  }
+}
+
+function classifyProviderError(error: unknown): GeminiProposalError {
+  const status = (error as { status?: unknown })?.status;
+  if (status === 429) return new GeminiProposalError("rate_limited");
+  if (status === 401 || status === 403 || status === 404) return new GeminiProposalError("configuration");
+  if (status === 503 || status === 502 || status === 504) return new GeminiProposalError("busy");
+  return new GeminiProposalError("unavailable");
+}
+
 export async function proposeCalendarAction(
   input: { text: string; timezone: string; nowIso: string; recentTurns?: Array<{ role: "user" | "assistant"; content: string }>; pendingAction?: unknown },
   options: { apiKey: string; model?: string; createInteraction?: CreateInteraction },
@@ -45,17 +59,17 @@ export async function proposeCalendarAction(
     ].join(" "),
     response_format: { type: "text", mime_type: "application/json", schema: providerProposalSchema },
     store: false,
-  });
+  }).catch((error: unknown) => { throw classifyProviderError(error); });
   if (result.status !== "completed" || !result.output_text) {
-    throw new Error("Gemini did not complete a structured proposal");
+    throw new GeminiProposalError("invalid_response");
   }
   let parsed: unknown;
   try {
     parsed = JSON.parse(result.output_text);
   } catch {
-    throw new Error("Gemini returned invalid JSON");
+    throw new GeminiProposalError("invalid_response");
   }
   const proposal = proposalSchema.safeParse(parsed);
-  if (!proposal.success) throw new Error("Gemini proposal did not satisfy the action contract");
+  if (!proposal.success) throw new GeminiProposalError("invalid_response");
   return { proposal: proposal.data, model: result.model ?? model };
 }
