@@ -17,6 +17,7 @@ describe("Gemini proposal adapter", () => {
       expect(params.input).toContain("Current pending Calendar draft");
       expect(requestOptions.retry_codes).not.toContain("429");
       expect(requestOptions.retries.maxRetries).toBe(0);
+      expect(requestOptions.timeout_ms).toBe(18_000);
       return { status: "completed", output_text: JSON.stringify({ kind: "action_plan", assistantMessage: "Review this event.", questions: [], actions: [action] }) };
     });
     const result = await proposeAction({ ...input, languageCode: "kn-IN", recentTurns: [{ role: "assistant", content: "What time?" }], pendingAction: action }, { apiKey: "test-key", createInteraction });

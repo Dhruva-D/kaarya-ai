@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { proposalSchema, providerProposalSchema, type Proposal } from "../../agent/proposal";
 
 type InteractionResult = { status: string; output_text?: string; model?: string };
-type InteractionRequestOptions = { retries: { strategy: "attempt-count-backoff"; maxRetries: number }; retry_codes: string[] };
+type InteractionRequestOptions = { retries: { strategy: "attempt-count-backoff"; maxRetries: number }; retry_codes: string[]; timeout_ms: number };
 type CreateInteraction = (params: {
   model: string;
   input: string;
@@ -69,6 +69,7 @@ export async function proposeAction(
   const requestOptions: InteractionRequestOptions = {
     retries: { strategy: "attempt-count-backoff", maxRetries: 0 },
     retry_codes: [],
+    timeout_ms: 18_000,
   };
   const createForModel = (selectedModel: string) => create({ ...request, model: selectedModel }, requestOptions)
     .catch((error: unknown) => { throw classifyProviderError(error); });
