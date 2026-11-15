@@ -44,6 +44,14 @@ describe("Gnani Prisma adapter", () => {
     expect(fetchImpl).toHaveBeenCalledOnce();
   });
 
+  it("sends documented Kannada and English hints using language_code", async () => {
+    const fetchImpl = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
+      expect((init?.body as FormData).get("language_code")).toBe("kn-IN,en-IN");
+      return Response.json({ success: true, transcript: "ನಮಸ್ಕಾರ", model: "prisma-v3.0", detected_language_code: "kn-IN" });
+    });
+    await transcribeWav(makeWav(), { apiKey: "test-key", fetchImpl, languageCandidates: ["kn-IN", "en-IN"] });
+  });
+
   it("does not turn provider errors or another model into a success", async () => {
     await expect(transcribeWav(makeWav(), {
       apiKey: "test-key", fetchImpl: async () => new Response("private error", { status: 401 }),

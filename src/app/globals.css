@@ -135,6 +135,9 @@ html.dark { --canvas:#121c1b; --surface:#1b2927; --ink:#eff5ef; --muted-ink:#bac
 html { scroll-behavior:smooth; }
 body { background:var(--canvas); color:var(--ink); }
 .kaarya-on-accent { color:var(--accent-ink)!important; }
+.voice-orb { background:radial-gradient(circle at 30% 25%,#79d3ff,#2563eb 55%,#19398e); box-shadow:0 0 55px #3b82f633; }
+.voice-orb-active { animation:voice-breathe 2s ease-in-out infinite; }
+@keyframes voice-breathe { 50% { transform:scale(1.06); box-shadow:0 0 70px #3b82f655; } }
 button, a, summary, textarea, select { transition:background-color .15s ease,color .15s ease,border-color .15s ease; }
 :focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
 @media (prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto!important; transition-duration:.01ms!important; animation-duration:.01ms!important; } }

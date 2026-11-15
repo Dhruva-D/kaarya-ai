@@ -3,7 +3,7 @@ import { z } from "zod";
 export const speechLanguageSchema = z.enum(["bn-IN", "en-IN", "gu-IN", "hi-IN", "kn-IN", "ml-IN", "mr-IN", "pa-IN", "ta-IN", "te-IN"]);
 export type SpeechLanguage = z.infer<typeof speechLanguageSchema>;
 
-const voices: Record<SpeechLanguage, string> = {
+export const voices: Record<SpeechLanguage, string> = {
   "bn-IN": "Kirra", "en-IN": "Kaveri", "gu-IN": "Falak", "hi-IN": "Nalini", "kn-IN": "Saanvi",
   "ml-IN": "Reshma", "mr-IN": "Zahira", "pa-IN": "Mehuli", "ta-IN": "Trisha", "te-IN": "Suhana",
 };

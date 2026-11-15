@@ -4,6 +4,8 @@ import { GnaniTranscriptionError, transcribeWav } from "@/lib/integrations/gnani
 import { validateWav } from "@/lib/integrations/gnani/wav";
 import { isSameOriginPost } from "@/lib/security/origin";
 import { claimProviderBudget } from "@/lib/security/rate-limit";
+import { speechLanguageSchema } from "@/lib/integrations/gnani/tts";
+import { z } from "zod";
 
 export const runtime = "nodejs";
 
@@ -17,6 +19,12 @@ export async function POST(request: Request) {
   }
   const form = await request.formData().catch(() => null);
   const audio = form?.get("audio");
+  const rawCandidates = form?.get("languageCandidates");
+  let candidateInput: unknown;
+  try { candidateInput = rawCandidates ? JSON.parse(String(rawCandidates).slice(0, 200)) : undefined; }
+  catch { return Response.json({ code: "INVALID_INPUT", message: "Invalid speech language hints" }, { status: 400 }); }
+  const candidates = z.array(speechLanguageSchema).min(2).max(4).optional().safeParse(candidateInput);
+  if (!candidates.success) return Response.json({ code: "INVALID_INPUT", message: "Invalid speech language hints" }, { status: 400 });
   if (!(audio instanceof File) || audio.size > 3_000_000 || audio.size < 44) {
     return Response.json({ code: "INVALID_AUDIO", message: "Use a short WAV recording" }, { status: 400 });
   }
@@ -31,6 +39,7 @@ export async function POST(request: Request) {
     const result = await transcribeWav(wav, {
       apiKey: process.env.GNANI_API_KEY,
       endpoint: process.env.GNANI_STT_URL,
+      languageCandidates: candidates.data,
     });
     return Response.json({ provider: "gnani", ...result });
   } catch (error) {

@@ -33,6 +33,7 @@ export async function transcribeWav(
     apiKey: string;
     endpoint?: string;
     fetchImpl?: typeof fetch;
+    languageCandidates?: Array<Transcription["detectedLanguageCode"]>;
   },
 ): Promise<Transcription> {
   validateWav(audio);
@@ -41,7 +42,7 @@ export async function transcribeWav(
   const form = new FormData();
   form.append("audio_file", new Blob([new Uint8Array(audio)], { type: "audio/wav" }), "speech.wav");
   form.append("model", "prisma-v3.0");
-  form.append("language_code", "indic-auto");
+  form.append("language_code", options.languageCandidates?.length ? options.languageCandidates.join(",") : "indic-auto");
 
   let response: Response;
   try {

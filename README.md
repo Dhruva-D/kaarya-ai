@@ -26,6 +26,8 @@ This is a locally verified Phase 1 slice, not a deployed service. Full cross-use
 
 ## Try it locally
 
+For hands-free conversation, use the blue waveform button beside Send, then **Start conversation**. Pause after each sentence: Kaarya transcribes it, sends it to Codex automatically, streams a spoken reply, then listens again. The voice session defaults to Kannada/English hints; choose all languages if needed. Pause, close, or switch tabs to stop the microphone. When a plan is ready, voice pauses so you can inspect and approve the exact action. Conversation mode uses Timbre v3.0 Shivani streaming audio; regular chat retains v2.5 speech. STT still uploads each completed utterance over REST, and Codex CLI starts per turn: this is automatic turn-taking, not a fully streaming duplex transport or a verified 1–2 second response.
+
 1. Run `npm run dev` in this folder and open `http://localhost:3000/app`. Sign in with the Google test account if prompted. After a long break, re-consent may be required. Old action previews expire; start a new conversation.
 2. Type a **synthetic** Calendar request with a future date, title, start and end time. Answer Kaarya's guest and Meet questions, inspect the exact preview, then use **Cancel** or approve only an event you actually want on your calendar.
 3. Record a short synthetic English or Kannada request. Confirm the transcript is editable before pressing Send. Check that the text reply appears and that Gnani Timbre speaks it automatically; the browser may require one **Enable sound** tap.

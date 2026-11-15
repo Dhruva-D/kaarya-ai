@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { VoiceSession, type VoiceReply } from "@/components/voice/voice-session";
 import { ActionReview } from "./action-review";
 import { TaskReview } from "./task-review";
 import { MailReview } from "./mail-review";
@@ -20,6 +21,8 @@ export function Workspace({ signOutControl, voiceAvailable, senderEmail }: { sig
   const [autoSpeakId, setAutoSpeakId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [voiceOpen, setVoiceOpen] = useState(false);
+  const voiceConversation = useRef<string | null>(null);
   const [modelStatus, setModelStatus] = useState<string | null>(null);
 
   const loadDetail = useCallback(async (id: string) => {
@@ -91,6 +94,17 @@ export function Workspace({ signOutControl, voiceAvailable, senderEmail }: { sig
     }
   }
 
+  async function voiceTurn(text: string, language: string, signal: AbortSignal): Promise<VoiceReply> {
+    const response = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, signal, body: JSON.stringify({ conversationId: voiceConversation.current ?? undefined, text, languageCode: language, inputMode: "voice", clientRequestId: crypto.randomUUID() }) });
+    if (!response.ok) throw new Error(await readApiError(response));
+    const result = await response.json() as { conversationId: string; assistantText: string; plan: unknown };
+    voiceConversation.current = result.conversationId;
+    setActiveId(result.conversationId);
+    void loadDetail(result.conversationId).catch(() => undefined);
+    void refreshSummaries().catch(() => undefined);
+    return { text: result.assistantText, language, review: Boolean(result.plan) };
+  }
+
   async function decide(kind: "approve" | "reject") {
     if (!detail?.plan || busy) return;
     const plan = detail.plan;
@@ -120,6 +134,8 @@ export function Workspace({ signOutControl, voiceAvailable, senderEmail }: { sig
   const history = detail?.history.filter((item) => item.planId !== plan?.id) ?? [];
   const hasSidePanel = Boolean(plan || history.length);
   return (
+    <>
+    {voiceOpen && <VoiceSession onTurn={voiceTurn} onClose={() => setVoiceOpen(false)} />}
     <div className={`mx-auto grid min-h-[calc(100vh-76px)] max-w-[1600px] ${hasSidePanel ? "lg:grid-cols-[240px_minmax(0,1fr)_340px]" : "lg:grid-cols-[240px_minmax(0,1fr)]"}`}>
       <aside className={`${menuOpen ? "block" : "hidden"} border-b border-[var(--line)] bg-[var(--canvas)] p-5 lg:block lg:border-b-0 lg:border-r`} aria-label="Conversations">
         <button className="min-h-11 w-full rounded-[10px] border border-[var(--line)] bg-[var(--surface)] px-4 text-left text-sm font-semibold hover:bg-[var(--soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]" onClick={() => { setActiveId(null); setDetail(null); setAutoSpeakId(null); setError(null); setMenuOpen(false); }} type="button">+ New conversation</button>
@@ -138,11 +154,12 @@ export function Workspace({ signOutControl, voiceAvailable, senderEmail }: { sig
         <div className="mx-auto flex w-full max-w-[780px] flex-1 flex-col">
           {loading ? <p className="pt-12 text-sm text-[color:var(--muted-ink)]" role="status">Loading your workspace…</p> : detail?.messages.length ? <div className="flex-1 py-10"><MessageList autoSpeakId={autoSpeakId} busy={busy && !decisionBusy} messages={detail.messages} voiceAvailable={voiceAvailable} /></div> : <div className="flex flex-1 flex-col justify-center py-12"><p className="text-sm font-semibold text-[color:var(--accent)]">YOUR WORKSPACE</p><h1 className="mt-4 max-w-lg text-3xl font-semibold tracking-tight sm:text-4xl">What would you like to get done?</h1><p className="mt-4 max-w-xl text-[15px] leading-7 text-[color:var(--muted-ink)]">Describe a meeting or task. I’ll ask for missing details and show the exact action before you decide whether to create it.</p></div>}
           {error && <div className="mb-4 rounded-[10px] border border-[var(--danger-line)] bg-[var(--danger-bg)] px-4 py-3 text-sm text-[var(--danger)]" role="alert">{error}</div>}
-          <div className="sticky bottom-0 bg-[var(--canvas)] pb-2 pt-3"><Composer disabled={busy || loading} onSend={send} voiceAvailable={voiceAvailable} /><p className="mt-2 text-center text-xs text-[color:var(--muted-ink)]" role="status">{modelStatus || "Codex · GPT-5.6 Luna  ·  Review every action before it runs"}</p></div>
+          <div className="sticky bottom-0 bg-[var(--canvas)] pb-2 pt-3"><Composer disabled={busy || loading || voiceOpen} onSend={send} onVoiceConversation={() => { setAutoSpeakId(null); voiceConversation.current = activeId; setVoiceOpen(true); }} voiceAvailable={voiceAvailable} /><p className="mt-2 text-center text-xs text-[color:var(--muted-ink)]" role="status">{modelStatus || "Codex · GPT-5.6 Luna  ·  Review every action before it runs"}</p></div>
         </div>
       </section>
 
       {hasSidePanel && <aside className="min-w-0 border-t border-[var(--line)] bg-[var(--canvas)] p-5 lg:border-l lg:border-t-0 lg:p-6" aria-label="Action review"><div className="lg:sticky lg:top-6">{plan && plan.actions?.length === 2 ? <BatchReview busy={busy} creating={decisionBusy} key={plan.id} onApprove={() => decide("approve")} onReject={() => decide("reject")} plan={plan as BatchPlan} senderEmail={senderEmail} /> : <>{plan?.action.tool === "calendar.create_event" && <ActionReview busy={busy} creating={decisionBusy} key={plan.id} onApprove={() => decide("approve")} onReject={() => decide("reject")} plan={plan as CalendarPlan} />}{plan?.action.tool === "tasks.create_task" && <TaskReview busy={busy} creating={decisionBusy} key={plan.id} onApprove={() => decide("approve")} onReject={() => decide("reject")} plan={plan as TaskPlan} />}{plan?.action.tool === "gmail.send" && <MailReview busy={busy} creating={decisionBusy} key={plan.id} onApprove={() => decide("approve")} onReject={() => decide("reject")} plan={plan as MailPlan} senderEmail={senderEmail} />}</>}<ActionHistory items={history} /></div></aside>}
     </div>
+    </>
   );
 }
