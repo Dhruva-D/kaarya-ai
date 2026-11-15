@@ -9,7 +9,7 @@ vi.mock("@/lib/agent/chat-service", () => ({
 }));
 vi.mock("@/lib/security/rate-limit", () => ({ claimProviderBudget: mocks.claimProviderBudget }));
 
-import { GeminiProposalError } from "@/lib/integrations/gemini/planner";
+import { CodexProposalError } from "@/lib/integrations/codex/planner";
 import { POST } from "./route";
 
 const body = { text: "Schedule a synthetic meeting tomorrow at 5 PM", inputMode: "text", clientRequestId: "11111111-1111-4111-8111-111111111111" };
@@ -36,24 +36,24 @@ describe("chat provider failures", () => {
     else process.env.DATABASE_URL = priorDatabaseUrl;
   });
 
-  it("returns a useful retry message when Gemini is busy", async () => {
-    mocks.handleChat.mockRejectedValue(new GeminiProposalError("busy"));
+  it("reports unavailable Codex model without claiming a plan", async () => {
+    mocks.handleChat.mockRejectedValue(new CodexProposalError("model_unavailable"));
     const response = await POST(request());
     expect(response.status).toBe(503);
-    expect(await response.json()).toMatchObject({ code: "GEMINI_BUSY", message: expect.stringContaining("try Send again") });
+    expect(await response.json()).toMatchObject({ code: "CODEX_UNAVAILABLE", message: expect.stringContaining("GPT-5.6 Luna") });
   });
 
   it("distinguishes an invalid provider plan from temporary availability", async () => {
-    mocks.handleChat.mockRejectedValue(new GeminiProposalError("invalid_response"));
+    mocks.handleChat.mockRejectedValue(new CodexProposalError("invalid_response"));
     const response = await POST(request());
-    expect(response.status).toBe(502);
-    expect(await response.json()).toMatchObject({ code: "GEMINI_INVALID_RESPONSE" });
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ code: "CODEX_UNAVAILABLE" });
   });
 
-  it("reports the provider request limit as 429", async () => {
-    mocks.handleChat.mockRejectedValue(new GeminiProposalError("rate_limited"));
+  it("reports a missing local CLI honestly", async () => {
+    mocks.handleChat.mockRejectedValue(new CodexProposalError("cli_unavailable"));
     const response = await POST(request());
-    expect(response.status).toBe(429);
-    expect(await response.json()).toMatchObject({ code: "GEMINI_RATE_LIMITED", message: expect.stringContaining("Google AI Studio") });
+    expect(response.status).toBe(503);
+    expect(await response.json()).toMatchObject({ code: "CODEX_UNAVAILABLE", message: expect.stringContaining("Codex CLI") });
   });
 });

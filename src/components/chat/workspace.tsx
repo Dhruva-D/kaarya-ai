@@ -20,7 +20,6 @@ export function Workspace({ signOutControl, voiceAvailable, senderEmail }: { sig
   const [autoSpeakId, setAutoSpeakId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [reasoningModel, setReasoningModel] = useState<"codex-gpt-6-luna" | "gemini-3.5-flash-lite" | "gemini-3.6-flash">("codex-gpt-6-luna");
   const [modelStatus, setModelStatus] = useState<string | null>(null);
 
   const loadDetail = useCallback(async (id: string) => {
@@ -73,7 +72,7 @@ export function Workspace({ signOutControl, voiceAvailable, senderEmail }: { sig
     try {
       const response = await fetch("/api/chat", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversationId: activeId ?? undefined, text, inputMode: languageCode ? "voice" : "text", languageCode, reasoningModel, clientRequestId: crypto.randomUUID() }),
+        body: JSON.stringify({ conversationId: activeId ?? undefined, text, inputMode: languageCode ? "voice" : "text", languageCode, clientRequestId: crypto.randomUUID() }),
       });
       if (!response.ok) throw new Error(await readApiError(response));
       const result = await response.json() as { conversationId: string; model: string; fallbackReason?: string };
@@ -122,28 +121,28 @@ export function Workspace({ signOutControl, voiceAvailable, senderEmail }: { sig
   const hasSidePanel = Boolean(plan || history.length);
   return (
     <div className={`mx-auto grid min-h-[calc(100vh-76px)] max-w-[1600px] ${hasSidePanel ? "lg:grid-cols-[240px_minmax(0,1fr)_340px]" : "lg:grid-cols-[240px_minmax(0,1fr)]"}`}>
-      <aside className={`${menuOpen ? "block" : "hidden"} border-b border-[#E3E7E3] bg-[#F6F6F3] p-5 lg:block lg:border-b-0 lg:border-r`} aria-label="Conversations">
-        <button className="min-h-11 w-full rounded-[10px] border border-[#CBD6D2] bg-white px-4 text-left text-sm font-semibold hover:bg-[#EEF3F0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#166B61]" onClick={() => { setActiveId(null); setDetail(null); setAutoSpeakId(null); setError(null); setMenuOpen(false); }} type="button">+ New conversation</button>
-        <h2 className="mt-9 text-xs font-semibold uppercase tracking-[0.12em] text-[#5A6664]">Recent conversations</h2>
+      <aside className={`${menuOpen ? "block" : "hidden"} border-b border-[var(--line)] bg-[var(--canvas)] p-5 lg:block lg:border-b-0 lg:border-r`} aria-label="Conversations">
+        <button className="min-h-11 w-full rounded-[10px] border border-[var(--line)] bg-[var(--surface)] px-4 text-left text-sm font-semibold hover:bg-[var(--soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)]" onClick={() => { setActiveId(null); setDetail(null); setAutoSpeakId(null); setError(null); setMenuOpen(false); }} type="button">+ New conversation</button>
+        <h2 className="mt-9 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--muted-ink)]">Recent conversations</h2>
         <nav className="mt-3 space-y-1" aria-label="Recent conversations">
-          {conversations.length === 0 && <p className="text-sm leading-6 text-[#5A6664]">Your conversations will appear here.</p>}
-          {conversations.map((item) => <button aria-current={item.id === activeId ? "page" : undefined} className={`block w-full truncate rounded-[10px] px-3 py-2.5 text-left text-sm hover:bg-[#E7EFEC] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#166B61] ${item.id === activeId ? "bg-[#E7EFEC] font-semibold" : ""}`} key={item.id} onClick={() => void selectConversation(item.id)} title={item.title} type="button">{item.title}</button>)}
+          {conversations.length === 0 && <p className="text-sm leading-6 text-[color:var(--muted-ink)]">Your conversations will appear here.</p>}
+          {conversations.map((item) => <button aria-current={item.id === activeId ? "page" : undefined} className={`block w-full truncate rounded-[10px] px-3 py-2.5 text-left text-sm hover:bg-[var(--soft)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--accent)] ${item.id === activeId ? "bg-[var(--soft)] font-semibold" : ""}`} key={item.id} onClick={() => void selectConversation(item.id)} title={item.title} type="button">{item.title}</button>)}
         </nav>
       </aside>
 
       <section className="flex min-h-[calc(100vh-76px)] min-w-0 flex-col px-5 pb-6 pt-5 sm:px-8 lg:px-10" aria-label="Chat workspace">
-        <div className="flex items-center justify-between gap-3 border-b border-[#E3E7E3] pb-4 lg:justify-end">
-          <button className="min-h-11 rounded-[10px] border border-[#CBD6D2] px-3 text-sm lg:hidden" onClick={() => setMenuOpen(!menuOpen)} type="button">Conversations</button>
+        <div className="flex items-center justify-between gap-3 border-b border-[var(--line)] pb-4 lg:justify-end">
+          <button className="min-h-11 rounded-[10px] border border-[var(--line)] px-3 text-sm lg:hidden" onClick={() => setMenuOpen(!menuOpen)} type="button">Conversations</button>
           {signOutControl}
         </div>
         <div className="mx-auto flex w-full max-w-[780px] flex-1 flex-col">
-          {loading ? <p className="pt-12 text-sm text-[#5A6664]" role="status">Loading your workspace…</p> : detail?.messages.length ? <div className="flex-1 py-10"><MessageList autoSpeakId={autoSpeakId} busy={busy && !decisionBusy} messages={detail.messages} voiceAvailable={voiceAvailable} /></div> : <div className="flex flex-1 flex-col justify-center py-12"><p className="text-sm font-semibold text-[#166B61]">YOUR WORKSPACE</p><h1 className="mt-4 max-w-lg text-3xl font-semibold tracking-tight sm:text-4xl">What would you like to get done?</h1><p className="mt-4 max-w-xl text-[15px] leading-7 text-[#5A6664]">Describe a meeting or task. I’ll ask for missing details and show the exact action before you decide whether to create it.</p></div>}
-          {error && <div className="mb-4 rounded-[10px] border border-[#E4C9C4] bg-[#FFF7F5] px-4 py-3 text-sm text-[#8E392F]" role="alert">{error}</div>}
-          <div className="sticky bottom-0 bg-[#F6F6F3] pb-2 pt-3"><div className="mb-3 flex flex-wrap items-center gap-2"><label className="text-xs font-medium text-[#5A6664]" htmlFor="reasoning-model">Reasoning model</label><select className="min-h-10 rounded-[10px] border border-[#CBD6D2] bg-white px-3 text-sm text-[#263634]" disabled={busy || loading} id="reasoning-model" onChange={(event) => { setReasoningModel(event.target.value as typeof reasoningModel); setModelStatus(null); }} value={reasoningModel}><option value="codex-gpt-6-luna">Codex · GPT-6 Luna (Gemini fallback)</option><option value="gemini-3.5-flash-lite">Gemini · 3.5 Flash-Lite</option><option value="gemini-3.6-flash">Gemini · 3.6 Flash</option></select></div><Composer disabled={busy || loading} onSend={send} voiceAvailable={voiceAvailable} />{modelStatus && <p className="mt-2 text-xs text-[#5A6664]" role="status">{modelStatus}</p>}<p className="mt-3 text-xs leading-5 text-[#5A6664]">{voiceAvailable ? "Review and edit the transcript before sending. Voice is processed only when you press Record." : "Voice input is unavailable right now. You can type your request above."}</p></div>
+          {loading ? <p className="pt-12 text-sm text-[color:var(--muted-ink)]" role="status">Loading your workspace…</p> : detail?.messages.length ? <div className="flex-1 py-10"><MessageList autoSpeakId={autoSpeakId} busy={busy && !decisionBusy} messages={detail.messages} voiceAvailable={voiceAvailable} /></div> : <div className="flex flex-1 flex-col justify-center py-12"><p className="text-sm font-semibold text-[color:var(--accent)]">YOUR WORKSPACE</p><h1 className="mt-4 max-w-lg text-3xl font-semibold tracking-tight sm:text-4xl">What would you like to get done?</h1><p className="mt-4 max-w-xl text-[15px] leading-7 text-[color:var(--muted-ink)]">Describe a meeting or task. I’ll ask for missing details and show the exact action before you decide whether to create it.</p></div>}
+          {error && <div className="mb-4 rounded-[10px] border border-[var(--danger-line)] bg-[var(--danger-bg)] px-4 py-3 text-sm text-[var(--danger)]" role="alert">{error}</div>}
+          <div className="sticky bottom-0 bg-[var(--canvas)] pb-2 pt-3"><Composer disabled={busy || loading} onSend={send} voiceAvailable={voiceAvailable} /><p className="mt-2 text-center text-xs text-[color:var(--muted-ink)]" role="status">{modelStatus || "Codex · GPT-5.6 Luna  ·  Review every action before it runs"}</p></div>
         </div>
       </section>
 
-      {hasSidePanel && <aside className="min-w-0 border-t border-[#E3E7E3] bg-[#F6F6F3] p-5 lg:border-l lg:border-t-0 lg:p-6" aria-label="Action review"><div className="lg:sticky lg:top-6">{plan && plan.actions?.length === 2 ? <BatchReview busy={busy} creating={decisionBusy} key={plan.id} onApprove={() => decide("approve")} onReject={() => decide("reject")} plan={plan as BatchPlan} senderEmail={senderEmail} /> : <>{plan?.action.tool === "calendar.create_event" && <ActionReview busy={busy} creating={decisionBusy} key={plan.id} onApprove={() => decide("approve")} onReject={() => decide("reject")} plan={plan as CalendarPlan} />}{plan?.action.tool === "tasks.create_task" && <TaskReview busy={busy} creating={decisionBusy} key={plan.id} onApprove={() => decide("approve")} onReject={() => decide("reject")} plan={plan as TaskPlan} />}{plan?.action.tool === "gmail.send" && <MailReview busy={busy} creating={decisionBusy} key={plan.id} onApprove={() => decide("approve")} onReject={() => decide("reject")} plan={plan as MailPlan} senderEmail={senderEmail} />}</>}<ActionHistory items={history} /></div></aside>}
+      {hasSidePanel && <aside className="min-w-0 border-t border-[var(--line)] bg-[var(--canvas)] p-5 lg:border-l lg:border-t-0 lg:p-6" aria-label="Action review"><div className="lg:sticky lg:top-6">{plan && plan.actions?.length === 2 ? <BatchReview busy={busy} creating={decisionBusy} key={plan.id} onApprove={() => decide("approve")} onReject={() => decide("reject")} plan={plan as BatchPlan} senderEmail={senderEmail} /> : <>{plan?.action.tool === "calendar.create_event" && <ActionReview busy={busy} creating={decisionBusy} key={plan.id} onApprove={() => decide("approve")} onReject={() => decide("reject")} plan={plan as CalendarPlan} />}{plan?.action.tool === "tasks.create_task" && <TaskReview busy={busy} creating={decisionBusy} key={plan.id} onApprove={() => decide("approve")} onReject={() => decide("reject")} plan={plan as TaskPlan} />}{plan?.action.tool === "gmail.send" && <MailReview busy={busy} creating={decisionBusy} key={plan.id} onApprove={() => decide("approve")} onReject={() => decide("reject")} plan={plan as MailPlan} senderEmail={senderEmail} />}</>}<ActionHistory items={history} /></div></aside>}
     </div>
   );
 }

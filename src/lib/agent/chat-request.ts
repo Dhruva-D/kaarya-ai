@@ -7,7 +7,7 @@ export const chatRequestSchema = z.strictObject({
   inputMode: z.enum(["text", "voice"]),
   languageCode: speechLanguageSchema.optional(),
   clientRequestId: z.uuid(),
-  reasoningModel: z.enum(["codex-gpt-6-luna", "gemini-3.5-flash-lite", "gemini-3.6-flash"]).default("codex-gpt-6-luna"),
+  reasoningModel: z.literal("codex-gpt-5.6-luna").default("codex-gpt-5.6-luna"),
 });
 
 export type ChatRequest = z.infer<typeof chatRequestSchema>;

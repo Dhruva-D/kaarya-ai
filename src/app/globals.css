@@ -118,6 +118,7 @@
 }
 
 @layer base {
+  .kaarya-on-accent { color: var(--accent-ink) !important; }
   * {
     @apply border-border outline-ring/50;
   }
@@ -128,3 +129,12 @@
     @apply font-sans;
   }
 }
+
+:root { --canvas:#f5f6f2; --surface:#fff; --ink:#202c2b; --muted-ink:#596865; --line:#dfe6df; --accent:#126b61; --accent-ink:#fff; --soft:#e9f0eb; --danger:#963e32; --danger-bg:#fff7f5; --danger-line:#e4c9c4; --warning-bg:#fff9ee; --warning-line:#e3d2b5; --success:#246b4b; color-scheme:light; }
+html.dark { --canvas:#121c1b; --surface:#1b2927; --ink:#eff5ef; --muted-ink:#bacac3; --line:#354743; --accent:#238678; --accent-ink:#fff; --soft:#283b36; --danger:#f09d8e; --danger-bg:#3a2826; --danger-line:#76504b; --warning-bg:#3d3425; --warning-line:#776044; --success:#83d2a9; color-scheme:dark; }
+html { scroll-behavior:smooth; }
+body { background:var(--canvas); color:var(--ink); }
+.kaarya-on-accent { color:var(--accent-ink)!important; }
+button, a, summary, textarea, select { transition:background-color .15s ease,color .15s ease,border-color .15s ease; }
+:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+@media (prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto!important; transition-duration:.01ms!important; animation-duration:.01ms!important; } }

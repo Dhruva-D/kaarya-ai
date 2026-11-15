@@ -1,0 +1,3 @@
+export function BrandMark({ compact = false }: { compact?: boolean }) {
+  return <span className="inline-flex items-center gap-2.5 font-semibold tracking-tight text-[color:var(--ink)]"><span aria-hidden="true" className="grid size-9 place-items-center rounded-xl bg-[var(--accent)] kaarya-on-accent"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M6 5v14M18 5 8 14m4-4 6 9" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round"/><circle cx="18" cy="5" r="1.5" fill="currentColor"/></svg></span>{!compact && <span>Kaarya <span className="font-normal text-[color:var(--muted-ink)]">AI</span></span>}</span>;
+}

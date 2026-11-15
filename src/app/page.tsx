@@ -1,22 +1,15 @@
 import Link from "next/link";
+import { ArrowUpRight, CalendarDays, Mail, Mic2, ListTodo } from "lucide-react";
+import { BrandMark } from "@/components/brand-mark";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-[#F6F6F3] px-6 py-12 text-[#222A2B] sm:px-12">
-      <div className="mx-auto max-w-3xl">
-        <p className="text-sm font-semibold tracking-wide text-[#166B61]">Kaarya AI</p>
-        <h1 className="mt-20 max-w-2xl text-4xl font-semibold tracking-tight sm:text-6xl">
-          Speak naturally. Review every action.
-        </h1>
-        <p className="mt-6 max-w-xl text-lg leading-8 text-[#5A6664]">
-          Speak in an Indian language or type a request. Kaarya uses Gnani AI for speech,
-          drafts a Calendar event, Google Task or email, and shows the exact details before you approve a Google action.
-        </p>
-        <p className="mt-6 max-w-xl border-l-2 border-[#166B61] pl-4 text-sm leading-6 text-[#5A6664]">
-          Try: “Schedule a project review tomorrow at five for 30 minutes.” Kaarya will ask about guests and a Meet link before creating it.
-        </p>
-        <Link className="mt-8 inline-flex min-h-11 items-center rounded-[10px] border border-[#166B61] px-5 font-medium text-[#166B61] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#166B61]" href="/app">Open Kaarya</Link>
-      </div>
+    <main className="min-h-screen bg-[var(--canvas)] text-[color:var(--ink)]">
+      <header className="border-b border-[var(--line)] bg-[var(--surface)] px-6 py-4"><div className="mx-auto flex max-w-6xl items-center justify-between gap-4"><BrandMark/><div className="flex items-center gap-2"><ThemeToggle/><Link className="inline-flex min-h-11 items-center rounded-xl bg-[var(--accent)] px-4 text-sm font-semibold kaarya-on-accent" href="/app">Open app <ArrowUpRight className="ml-1.5" size={16}/></Link></div></div></header>
+      <div className="mx-auto grid max-w-6xl gap-14 px-6 py-16 lg:grid-cols-[1fr_.85fr] lg:items-center lg:py-28"><section><p className="text-xs font-bold uppercase tracking-[.22em] text-[color:var(--accent)]">Voice to action, with you in control</p><h1 className="mt-6 max-w-2xl text-5xl font-semibold leading-[1.07] tracking-[-.055em] sm:text-6xl">Say what matters.<br/><span className="text-[color:var(--accent)]">See it done.</span></h1><p className="mt-7 max-w-xl text-lg leading-8 text-[color:var(--muted-ink)]">Speak in an Indian language or type a request. Kaarya prepares Calendar events, Tasks and email, then shows every detail for your approval.</p><div className="mt-9 flex flex-wrap items-center gap-4"><Link className="inline-flex min-h-12 items-center rounded-xl bg-[var(--accent)] px-6 font-semibold kaarya-on-accent hover:opacity-90" href="/app">Start with Kaarya <ArrowUpRight className="ml-2" size={18}/></Link><span className="text-sm text-[color:var(--muted-ink)]">Google sign-in required</span></div><p className="mt-10 border-l-2 border-[var(--accent)] pl-4 text-sm leading-6 text-[color:var(--muted-ink)]">“Schedule a project review tomorrow at five for 30 minutes.”<br/>Kaarya will ask about guests and a Meet link.</p></section><section aria-label="How Kaarya works" className="rounded-[24px] border border-[var(--line)] bg-[var(--surface)] p-6 shadow-[0_24px_80px_rgba(22,39,34,.08)] sm:p-9"><div className="flex items-center justify-between border-b border-[var(--line)] pb-5"><span className="text-sm font-semibold">A calmer way to act</span><span className="rounded-full bg-[var(--soft)] px-3 py-1 text-xs text-[color:var(--accent)]">You approve every step</span></div><div className="space-y-7 py-8"><Feature icon={<Mic2 size={20}/>} step="01" title="Tell Kaarya" description="Speak naturally or type. Gnani Prisma transcribes your voice."/><Feature icon={<CalendarDays size={20}/>} step="02" title="Review the plan" description="See the exact date, guests, task or email before it goes anywhere."/><Feature icon={<ArrowUpRight size={20}/>} step="03" title="Approve once" description="Kaarya writes to Google only after your confirmation."/></div><div className="flex flex-wrap gap-2 border-t border-[var(--line)] pt-5 text-xs text-[color:var(--muted-ink)]"><span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] px-3 py-1.5"><CalendarDays size={14}/> Calendar</span><span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] px-3 py-1.5"><ListTodo size={14}/> Tasks</span><span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] px-3 py-1.5"><Mail size={14}/> Gmail</span></div></section></div><footer className="mx-auto max-w-6xl border-t border-[var(--line)] px-6 py-6 text-xs text-[color:var(--muted-ink)]">Kaarya AI · Speech powered by Gnani Prisma and Timbre</footer>
     </main>
   );
 }
+
+function Feature({ icon, step, title, description }: { icon: React.ReactNode; step: string; title: string; description: string }) { return <div className="flex gap-4"><span className="grid size-11 shrink-0 place-items-center rounded-xl bg-[var(--soft)] text-[color:var(--accent)]">{icon}</span><div><p className="text-xs font-semibold uppercase tracking-wider text-[color:var(--muted-ink)]">{step}</p><h2 className="mt-1 font-semibold">{title}</h2><p className="mt-1 text-sm leading-6 text-[color:var(--muted-ink)]">{description}</p></div></div>; }

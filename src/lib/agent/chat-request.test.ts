@@ -9,8 +9,8 @@ describe("chat request", () => {
     expect(chatRequestSchema.safeParse({ ...valid, text: "x".repeat(2_001) }).success).toBe(false);
     expect(chatRequestSchema.safeParse({ ...valid, inputMode: "voice", languageCode: "kn-IN" }).success).toBe(true);
     expect(chatRequestSchema.safeParse({ ...valid, inputMode: "voice", languageCode: "auto" }).success).toBe(false);
-    expect(chatRequestSchema.parse(valid).reasoningModel).toBe("codex-gpt-6-luna");
-    expect(chatRequestSchema.safeParse({ ...valid, reasoningModel: "gemini-3.6-flash" }).success).toBe(true);
+    expect(chatRequestSchema.parse(valid).reasoningModel).toBe("codex-gpt-5.6-luna");
+    expect(chatRequestSchema.safeParse({ ...valid, reasoningModel: "gemini-3.6-flash" }).success).toBe(false);
     expect(chatRequestSchema.safeParse({ ...valid, reasoningModel: "gpt-6-astra" }).success).toBe(false);
   });
 });

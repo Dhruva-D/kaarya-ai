@@ -35,22 +35,22 @@ export function BatchReview({ plan, busy, creating, onApprove, onReject, senderE
   const missingSender = plan.actions.some((item) => item.action.tool === "gmail.send") && !senderEmail;
   const partial = plan.status === "failed" && plan.actions.some((item) => item.receipt.status === "succeeded");
   const statusLabel = expired ? "expired" : partial ? "partially completed" : plan.status.replaceAll("_", " ");
-  return <section aria-labelledby="batch-review-title" className="rounded-[14px] border border-[#D9E2DE] bg-white p-5 shadow-[0_8px_30px_rgba(34,42,43,0.04)]">
-    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#166B61]">Action plan</p>
+  return <section aria-labelledby="batch-review-title" className="rounded-[14px] border border-[var(--line)] bg-[var(--surface)] p-5 shadow-[0_8px_30px_rgba(34,42,43,0.04)]">
+    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--accent)]">Action plan</p>
     <h2 id="batch-review-title" className="mt-3 text-xl font-semibold tracking-tight">Review both actions</h2>
-    <p className="mt-2 text-sm leading-6 text-[#5A6664]">{pending ? "Both actions will run only after you approve these exact details." : `Status: ${statusLabel}`}</p>
+    <p className="mt-2 text-sm leading-6 text-[color:var(--muted-ink)]">{pending ? "Both actions will run only after you approve these exact details." : `Status: ${statusLabel}`}</p>
     <ol className="mt-5 space-y-4">{plan.actions.map((item, index) => {
       const info = summary(item.action, senderEmail);
-      return <li className="min-w-0 rounded-[10px] border border-[#E3E7E3] bg-[#FAFBF9] p-4" key={item.id}>
-        <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#166B61]">{index + 1}. {info.service}</p>
+      return <li className="min-w-0 rounded-[10px] border border-[var(--line)] bg-[#FAFBF9] p-4" key={item.id}>
+        <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[color:var(--accent)]">{index + 1}. {info.service}</p>
         <h3 className="mt-2 break-words text-sm font-semibold">{info.title}</h3>
-        <dl className="mt-3 space-y-1 text-sm leading-6 text-[#5A6664]">{info.details.map((detail, detailIndex) => <div className="break-words whitespace-pre-wrap" key={detailIndex}>{detail}</div>)}</dl>
-        {!pending && item.receipt.status !== "pending" && item.receipt.status !== "executing" && <p className={`mt-3 text-sm font-semibold ${item.receipt.status === "succeeded" ? "text-[#166B61]" : "text-[#8E392F]"}`}>Result: {item.receipt.status.replaceAll("_", " ")}{item.receipt.providerObjectId ? ` · Google ID: ${item.receipt.providerObjectId}` : ""}</p>}
-        {!pending && item.receipt.status === "unknown" && <p className="mt-2 text-xs leading-5 text-[#8E392F]">Check {info.service} before making another request.</p>}
+        <dl className="mt-3 space-y-1 text-sm leading-6 text-[color:var(--muted-ink)]">{info.details.map((detail, detailIndex) => <div className="break-words whitespace-pre-wrap" key={detailIndex}>{detail}</div>)}</dl>
+        {!pending && item.receipt.status !== "pending" && item.receipt.status !== "executing" && <p className={`mt-3 text-sm font-semibold ${item.receipt.status === "succeeded" ? "text-[color:var(--accent)]" : "text-[var(--danger)]"}`}>Result: {item.receipt.status.replaceAll("_", " ")}{item.receipt.providerObjectId ? ` · Google ID: ${item.receipt.providerObjectId}` : ""}</p>}
+        {!pending && item.receipt.status === "unknown" && <p className="mt-2 text-xs leading-5 text-[var(--danger)]">Check {info.service} before making another request.</p>}
       </li>;
     })}</ol>
-    {pending && <p className="mt-4 text-xs leading-5 text-[#5A6664]">Need a change? Type a correction below. Kaarya will replace this preview before you approve.</p>}
-    {pending && <div className="mt-5 flex flex-wrap gap-3"><button className="min-h-11 rounded-[10px] bg-[#166B61] px-4 text-sm font-semibold text-white hover:bg-[#10564F] disabled:opacity-50" disabled={busy || missingSender} onClick={onApprove} type="button">{creating ? "Carrying out actions…" : "Approve both actions"}</button><button className="min-h-11 rounded-[10px] border border-[#CBD6D2] px-4 text-sm font-medium hover:bg-[#F6F6F3] disabled:opacity-50" disabled={busy} onClick={onReject} type="button">Cancel both</button></div>}
-    {expired && <p className="mt-5 text-sm leading-6 text-[#5A6664]">This preview can no longer be approved. Send a new request to continue.</p>}
+    {pending && <p className="mt-4 text-xs leading-5 text-[color:var(--muted-ink)]">Need a change? Type a correction below. Kaarya will replace this preview before you approve.</p>}
+    {pending && <div className="mt-5 flex flex-wrap gap-3"><button className="min-h-11 rounded-[10px] bg-[var(--accent)] px-4 text-sm font-semibold kaarya-on-accent hover:bg-[var(--accent)] disabled:opacity-50" disabled={busy || missingSender} onClick={onApprove} type="button">{creating ? "Carrying out actions…" : "Approve both actions"}</button><button className="min-h-11 rounded-[10px] border border-[var(--line)] px-4 text-sm font-medium hover:bg-[var(--canvas)] disabled:opacity-50" disabled={busy} onClick={onReject} type="button">Cancel both</button></div>}
+    {expired && <p className="mt-5 text-sm leading-6 text-[color:var(--muted-ink)]">This preview can no longer be approved. Send a new request to continue.</p>}
   </section>;
 }

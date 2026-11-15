@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { encodePcm16Wav, resampleMono } from "@/lib/audio/wav-encode";
 import { readApiError } from "@/components/chat/types";
+import { Mic, Square } from "lucide-react";
 
 type VoiceState = "idle" | "recording" | "processing" | "transcribing";
 const languageNames: Record<string, string> = { "bn-IN": "Bengali", "en-IN": "English", "gu-IN": "Gujarati", "hi-IN": "Hindi", "kn-IN": "Kannada", "ml-IN": "Malayalam", "mr-IN": "Marathi", "pa-IN": "Punjabi", "ta-IN": "Tamil", "te-IN": "Telugu" };
@@ -10,7 +11,6 @@ const languageNames: Record<string, string> = { "bn-IN": "Bengali", "en-IN": "En
 export function VoiceRecorder({ onTranscript }: { onTranscript: (text: string, languageCode: string) => void }) {
   const [state, setState] = useState<VoiceState>("idle");
   const [seconds, setSeconds] = useState(0);
-  const [detectedLanguage, setDetectedLanguage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const recorder = useRef<MediaRecorder | null>(null);
   const stream = useRef<MediaStream | null>(null);
@@ -41,7 +41,6 @@ export function VoiceRecorder({ onTranscript }: { onTranscript: (text: string, l
       if (!response.ok) throw new Error(await readApiError(response));
       const result = await response.json() as { transcript: string; model: string; detectedLanguageCode: string };
       if (!result.transcript.trim() || result.model !== "prisma-v3.0" || !languageNames[result.detectedLanguageCode]) throw new Error("Gnani did not return a valid transcript");
-      setDetectedLanguage(languageNames[result.detectedLanguageCode]);
       onTranscript(result.transcript, result.detectedLanguageCode);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Voice transcription failed. You can type instead.");
@@ -55,7 +54,6 @@ export function VoiceRecorder({ onTranscript }: { onTranscript: (text: string, l
 
   async function start() {
     setError(null);
-    setDetectedLanguage(null);
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
       setError("This browser cannot record audio. You can type your request instead.");
       return;
@@ -102,19 +100,18 @@ export function VoiceRecorder({ onTranscript }: { onTranscript: (text: string, l
   }
 
   return (
-    <div className="mb-3 rounded-[10px] border border-[#E3E7E3] bg-[#F6F6F3] px-3 py-2.5 text-sm">
+    <div className="text-sm">
       <div className="flex flex-wrap items-center gap-3">
-        {state === "idle" ? <button className="min-h-11 rounded-[10px] border border-[#CBD6D2] bg-white px-4 font-medium hover:bg-[#E7EFEC] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#166B61]" onClick={() => void start()} type="button">Record voice</button> : null}
+        {state === "idle" ? <button aria-label="Record voice" title="Record voice" className="grid size-11 place-items-center rounded-xl border border-[var(--line)] bg-[var(--surface)] text-[color:var(--accent)] hover:bg-[var(--soft)]" onClick={() => void start()} type="button"><Mic size={19}/></button> : null}
         {state === "recording" ? <>
-          <span className="font-medium text-[#A34236]" role="status">Recording… 00:{String(seconds).padStart(2, "0")}</span>
-          <button className="min-h-11 rounded-[10px] bg-[#166B61] px-4 font-medium text-white" onClick={() => stop()} type="button">Stop and transcribe</button>
+          <span className="font-medium text-[var(--danger)]" role="status">Recording… 00:{String(seconds).padStart(2, "0")}</span>
+          <button className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-[var(--accent)] px-4 font-medium kaarya-on-accent" onClick={() => stop()} type="button"><Square size={15}/> Stop</button>
           <button className="min-h-11 rounded-[10px] px-3 underline underline-offset-4" onClick={() => stop(true)} type="button">Discard</button>
         </> : null}
         {state === "processing" && <span role="status">Preparing WAV audio…</span>}
         {state === "transcribing" && <span role="status">Transcribing with Gnani Prisma…</span>}
-        <span className="ml-auto text-xs text-[#5A6664]">{detectedLanguage ? `Detected ${detectedLanguage}` : "Language detected automatically"}</span>
       </div>
-      {error && <p className="mt-2 text-sm text-[#A34236]" role="alert">{error}</p>}
+      {error && <p className="mt-2 text-sm text-[var(--danger)]" role="alert">{error}</p>}
     </div>
   );
 }

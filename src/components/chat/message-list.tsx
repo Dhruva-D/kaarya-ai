@@ -64,13 +64,13 @@ export function MessageList({ messages, busy, voiceAvailable, autoSpeakId }: { m
     <div aria-live="polite" className="space-y-7">
       {messages.map((message) => (
         <article className={`max-w-[90%] ${message.role === "user" ? "ml-auto" : "mr-auto"}`} key={message.id}>
-          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#5A6664]">{message.role === "user" ? "You" : "Kaarya"}</p>
-          <div className={`whitespace-pre-wrap break-words rounded-[14px] px-4 py-3 text-[15px] leading-7 ${message.role === "user" ? "bg-[#E7EFEC]" : "border border-[#E3E7E3] bg-white"}`}>{message.content}</div>
-          {message.role === "assistant" && playingId === message.id && <p className="mt-2 text-xs text-[#166B61]" role="status">Speaking…</p>}
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--muted-ink)]">{message.role === "user" ? "You" : "Kaarya"}</p>
+          <div className={`whitespace-pre-wrap break-words rounded-[14px] px-4 py-3 text-[15px] leading-7 ${message.role === "user" ? "bg-[var(--soft)]" : "border border-[var(--line)] bg-[var(--surface)]"}`}>{message.content}</div>
+          {message.role === "assistant" && playingId === message.id && <p className="mt-2 text-xs text-[color:var(--accent)]" role="status">Speaking…</p>}
         </article>
       ))}
-      {voiceError && <p className="text-sm text-[#A34236]" role="alert">{voiceError} {blockedMessage && <button className="ml-2 underline underline-offset-2" onClick={() => void play(blockedMessage)} type="button">Enable sound</button>}</p>}
-      {busy && <p className="text-sm text-[#5A6664]" role="status">Preparing a response…</p>}
+      {voiceError && <p className="text-sm text-[var(--danger)]" role="alert">{voiceError} {blockedMessage && <button className="ml-2 underline underline-offset-2" onClick={() => void play(blockedMessage)} type="button">Enable sound</button>}</p>}
+      {busy && <p className="text-sm text-[color:var(--muted-ink)]" role="status">Preparing a response…</p>}
     </div>
   );
 }

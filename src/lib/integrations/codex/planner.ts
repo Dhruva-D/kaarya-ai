@@ -36,7 +36,7 @@ export async function proposeWithCodex(input: PlannerInput): Promise<{ proposal:
     try { decoded = JSON.parse(output); } catch { throw new CodexProposalError("invalid_response"); }
     const result = proposalSchema.safeParse(decoded);
     if (!result.success) throw new CodexProposalError("invalid_response");
-    return { proposal: result.data, model: "codex:gpt-6-luna" };
+    return { proposal: result.data, model: "codex:gpt-5.6-luna" };
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
@@ -46,7 +46,7 @@ function runCodex(directory: string, schemaPath: string, prompt: string): Promis
   return new Promise((resolve, reject) => {
     const command = process.env.CODEX_CLI_PATH || (process.platform === "win32" ? "codex.exe" : "codex");
     const child = spawn(/* turbopackIgnore: true */ command, [
-      "exec", "-m", "gpt-6-luna", "-c", "model_reasoning_effort=low", "-c", "service_tier=priority",
+      "exec", "-m", "gpt-5.6-luna", "-c", "model_reasoning_effort=medium", "-c", "service_tier=fast",
       "--sandbox", "read-only", "--skip-git-repo-check", "--ephemeral", "--ignore-user-config",
       "--output-schema", schemaPath, "--json", "-",
     ], {
