@@ -13,11 +13,12 @@ type Phase = "ready" | "listening" | "transcribing" | "thinking" | "speaking" | 
 export function VoiceSession({ onTurn, onClose }: { onTurn: (text: string, language: string, signal: AbortSignal) => Promise<VoiceReply>; onClose: () => void }) {
   const [phase, setPhase] = useState<Phase>("ready");
   const [error, setError] = useState("");
-  const [transcript, setTranscript] = useState("");
-  const [reply, setReply] = useState("");
-  const [hint, setHint] = useState("kn-IN");
+
   const panel = useRef<HTMLDialogElement | null>(null);
-  useEffect(() => { panel.current?.showModal(); }, []);
+  useEffect(() => { panel.current?.showModal(); const timer = setTimeout(() => void begin(), 0); return () => clearTimeout(timer);
+  // Start once when the user opens voice mode; subsequent turns are managed by the session.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const active = useRef(false);
   const generation = useRef(0);
   const media = useRef<MediaStream | null>(null);
@@ -119,18 +120,18 @@ export function VoiceSession({ onTurn, onClose }: { onTurn: (text: string, langu
       const wav = encodePcm16Wav(resampleMono(decoded.getChannelData(0), decoded.sampleRate));
       const form = new FormData();
       form.append("audio", new Blob([new Uint8Array(wav)], { type: "audio/wav" }), "turn.wav");
-      if (hint) form.append("languageCandidates", JSON.stringify([hint, "en-IN"]));
+      form.append("languageCandidates", JSON.stringify(["kn-IN", "en-IN", "hi-IN"]));
       const response = await fetch("/api/speech/transcribe", { method: "POST", body: form, signal: controller.signal });
       if (!response.ok) throw new Error(await readApiError(response));
       const data = await response.json() as { transcript: string; detectedLanguageCode: string };
       if (!current()) return;
       if (!data.transcript?.trim()) throw new Error("I could not hear a clear sentence. Please try again.");
-      setTranscript(data.transcript);
+
       setPhase("thinking");
-      const replyLanguage = /[\u0c80-\u0cff]/u.test(data.transcript) ? "kn-IN" : (hint && data.detectedLanguageCode !== hint && data.detectedLanguageCode !== "en-IN" ? hint : data.detectedLanguageCode);
+      const replyLanguage = /[\u0c80-\u0cff]/u.test(data.transcript) ? "kn-IN" : /[\u0900-\u097f]/u.test(data.transcript) ? "hi-IN" : data.detectedLanguageCode;
       const result = await turn.current(data.transcript, replyLanguage, controller.signal);
       if (!current()) return;
-      setReply(result.text);
+
       const synthesis = await fetch("/api/speech/stream", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: result.text, language: result.language }), signal: controller.signal });
       if (!synthesis.ok) throw new Error(await readApiError(synthesis));
       if (!current()) { await synthesis.body?.cancel(); return; }
@@ -147,6 +148,6 @@ export function VoiceSession({ onTurn, onClose }: { onTurn: (text: string, langu
   }
 
   const running = ["listening", "transcribing", "thinking", "speaking"].includes(phase);
-  const labels: Record<Phase, string> = { ready: "Ready when you are", listening: "Listening…", transcribing: "Understanding your speech…", thinking: "Preparing a reply…", speaking: "Kaarya is speaking", review: "Your action is ready to review", paused: "Conversation paused", error: "Voice mode needs attention" };
-  return <dialog ref={panel} onCancel={() => { stopResources(); onClose(); }} aria-labelledby="voice-title" className="fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%_-_2rem)] max-w-lg overflow-y-auto rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-7 text-center text-[var(--ink)] shadow-2xl backdrop:bg-black/40 backdrop:backdrop-blur-sm"><button aria-label="Close voice conversation" autoFocus className="absolute right-3 top-3 grid size-11 place-items-center rounded-full hover:bg-[var(--soft)]" onClick={() => { stopResources(); onClose(); }} type="button"><X size={20}/></button><h2 className="mt-4 text-xl font-semibold" id="voice-title">Talk with Kaarya</h2><p className="mt-2 text-sm text-[var(--muted-ink)]">Speak, pause, and hear a reply. No Send button needed.</p><div className={`voice-orb mx-auto my-9 grid size-36 place-items-center rounded-full ${running ? "voice-orb-active" : ""}`}><AudioLines size={48} className="text-white"/></div><p className="text-lg font-medium" role="status">{labels[phase]}</p>{!running && <label className="mt-4 block text-sm text-[var(--muted-ink)]">Speech hint <select className="ml-2 rounded-lg border border-[var(--line)] bg-[var(--surface)] p-2" onChange={(event) => setHint(event.target.value)} value={hint}><option value="kn-IN">Kannada & English</option><option value="hi-IN">Hindi & English</option><option value="">All supported languages</option></select></label>}<div className="mt-5 max-h-48 space-y-3 overflow-y-auto text-left text-sm leading-6">{transcript && <p><span className="font-semibold">You: </span>{transcript}</p>}{reply && <p><span className="font-semibold">Kaarya: </span>{reply}</p>}{error && <p className="text-[var(--danger)]" role="alert">{error}</p>}</div>{phase === "review" ? <button className="mt-6 min-h-11 rounded-xl bg-blue-600 px-5 font-semibold text-white" onClick={onClose} type="button">Review exact action</button> : <button className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-5 font-semibold text-white" onClick={() => running ? (stopResources(), setPhase("paused")) : void begin()} type="button">{running ? <Pause size={18}/> : <Play size={18}/>} {running ? "Pause" : "Start conversation"}</button>}<p className="mt-5 text-xs leading-5 text-[var(--muted-ink)]">Microphone stays active during this session. Pause or close to stop. Calendar, Tasks and email still need exact approval.</p></dialog>;
+  const labels: Record<Phase, string> = { ready: "Connecting…", listening: "Listening…", transcribing: "Understanding your speech…", thinking: "Preparing a reply…", speaking: "Kaarya is speaking", review: "Your action is ready to review", paused: "Conversation paused", error: "Voice mode needs attention" };
+  return <dialog ref={panel} onCancel={() => { stopResources(); onClose(); }} aria-labelledby="voice-title" className="fixed inset-0 m-auto max-h-[90dvh] w-[calc(100%_-_2rem)] max-w-lg overflow-y-auto rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-7 text-center text-[var(--ink)] shadow-2xl backdrop:bg-black/40 backdrop:backdrop-blur-sm"><button aria-label="Close voice conversation" autoFocus className="absolute right-3 top-3 grid size-11 place-items-center rounded-full hover:bg-[var(--soft)]" onClick={() => { stopResources(); onClose(); }} type="button"><X size={20}/></button><h2 className="mt-4 text-xl font-semibold" id="voice-title">Talk with Kaarya</h2><p className="mt-2 text-sm text-[var(--muted-ink)]">Speak, pause, and hear a reply. No Send button needed.</p><div className={`voice-orb mx-auto my-9 grid size-36 place-items-center rounded-full ${running ? "voice-orb-active" : ""}`}><AudioLines size={48} className="text-white"/></div><p className="text-lg font-medium" role="status">{labels[phase]}</p><div className="mt-5 max-h-48 space-y-3 overflow-y-auto text-left text-sm leading-6">{error && <p className="text-[var(--danger)]" role="alert">{error}</p>}</div>{phase === "review" ? <button className="mt-6 min-h-11 rounded-xl bg-blue-600 px-5 font-semibold text-white" onClick={onClose} type="button">Review exact action</button> : <button className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-xl bg-blue-600 px-5 font-semibold text-white" onClick={() => running ? (stopResources(), setPhase("paused")) : void begin()} type="button">{running ? <Pause size={18}/> : <Play size={18}/>} {running ? "Pause" : "Resume"}</button>}<p className="mt-5 text-xs leading-5 text-[var(--muted-ink)]">Microphone stays active during this session. Pause or close to stop. Calendar, Tasks and email still need exact approval.</p></dialog>;
 }

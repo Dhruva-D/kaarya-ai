@@ -27,7 +27,7 @@ export async function handleChat(userId: string, request: ChatRequest) {
   const timezone = profile?.timezone ?? "Asia/Kolkata";
   const recent = request.conversationId ? await db.select({ role: messages.role, content: messages.content })
     .from(messages).where(and(eq(messages.conversationId, request.conversationId), eq(messages.userId, userId)))
-    .orderBy(desc(messages.createdAt)).limit(6) : [];
+    .orderBy(desc(messages.createdAt)).limit(16) : [];
   const [pendingPlan] = request.conversationId ? await db.select({ id: actionPlans.id }).from(actionPlans)
     .where(and(eq(actionPlans.conversationId, request.conversationId), eq(actionPlans.userId, userId), eq(actionPlans.status, "awaiting_approval")))
     .orderBy(desc(actionPlans.createdAt)).limit(1) : [];
@@ -36,7 +36,7 @@ export async function handleChat(userId: string, request: ChatRequest) {
   const { proposal, model } = await proposeWithCodex(
     {
       text: request.text, timezone, nowIso: new Date().toISOString(), languageCode: request.languageCode,
-      recentTurns: recent.reverse().map((turn) => ({ role: turn.role, content: turn.content.slice(0, 1_000) })),
+      recentTurns: recent.reverse().map((turn) => ({ role: turn.role, content: turn.content.slice(0, 2_000) })),
       pendingAction: pendingActions.length ? pendingActions.map((item) => ({ tool: item.type, args: item.args })) : undefined,
     },
   );
