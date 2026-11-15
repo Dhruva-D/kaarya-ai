@@ -14,7 +14,7 @@ describe("Gemini proposal adapter", () => {
       expect(params.input).toContain("Reply language: kn-IN");
       expect(params.system_instruction).toContain("every clarification question in the requested reply language");
       expect(params.input).toContain("What time?");
-      expect(params.input).toContain("Current pending Calendar draft");
+      expect(params.input).toContain("Current pending action draft");
       expect(requestOptions.retry_codes).not.toContain("429");
       expect(requestOptions.retries.maxRetries).toBe(0);
       expect(requestOptions.timeout_ms).toBe(18_000);

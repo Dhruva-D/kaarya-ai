@@ -42,6 +42,7 @@ const approval = {
 };
 const context = { params: Promise.resolve({ id: planId }) };
 const url = "http://localhost:3000/api/plans/" + planId + "/approve";
+const futureDueDate = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10);
 
 function request(origin = "http://localhost:3000", body: unknown = approval) {
   return new Request(url, { method: "POST", headers: { origin, "content-type": "application/json" }, body: JSON.stringify(body) });
@@ -94,7 +95,7 @@ describe("Calendar approval route guards", () => {
   });
 
   it("executes one owned, exact-hash Task only with Tasks credentials", async () => {
-    const task = { tool: "tasks.create_task" as const, args: { title: "Prepare synthetic demo", dueDate: "2026-11-11" } };
+    const task = { tool: "tasks.create_task" as const, args: { title: "Prepare synthetic demo", dueDate: futureDueDate } };
     const taskApproval = { ...approval, canonicalHash: canonicalActionHash(task) };
     mocks.getOwnedPendingActionTypes.mockResolvedValue(["tasks.create_task"]);
     mocks.claimActionPlan.mockResolvedValue({
@@ -149,7 +150,7 @@ describe("Calendar approval route guards", () => {
   });
 
   it("binds both actions to one approval and saves separate receipts in order", async () => {
-    const task = { tool: "tasks.create_task" as const, args: { title: "Prepare synthetic notes", dueDate: "2026-11-11" } };
+    const task = { tool: "tasks.create_task" as const, args: { title: "Prepare synthetic notes", dueDate: futureDueDate } };
     const mail = { tool: "gmail.send" as const, args: { to: "test@example.com", subject: "Synthetic update", body: "Synthetic content." } };
     const batchApproval = { ...approval, canonicalHash: canonicalPlanHash([task, mail]) };
     mocks.getOwnedPendingActionTypes.mockResolvedValue([task.tool, mail.tool]);

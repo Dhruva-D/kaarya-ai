@@ -23,6 +23,16 @@ Kaarya AI is a voice-first, human-approved productivity assistant. Phase 1 turns
 
 This is a locally verified Phase 1 slice, not a deployed service. Full cross-user HTTP testing with a second account and deployment remain open.
 
+## Try it locally
+
+1. Run `npm run dev` in this folder and open `http://localhost:3000/app`. Sign in with the Google test account if prompted. After a long break, re-consent may be required. Old action previews expire; start a new conversation.
+2. Type a **synthetic** Calendar request with a future date, title, start and end time. Answer Kaarya's guest and Meet questions, inspect the exact preview, then use **Cancel** or approve only an event you actually want on your calendar.
+3. Record a short synthetic English or Kannada request. Confirm the transcript is editable before pressing Send. Check that the text reply appears and that Gnani Timbre speaks it automatically; the browser may require one **Enable sound** tap.
+4. Try a date-only Task and a Gmail draft to an account you control. Inspect the task date and the Gmail **From**, **To**, subject and full body. Approve only if you intend the real Google write.
+5. Try one request for a Calendar event **and** a Task. Review both cards. The two-action execution code has automated tests, but a live batch write has not been verified because the user declined that test.
+
+The app uses real provider calls. Gemini quota, Gnani credits, Google consent and network speed can affect a test. A complete spoken turn in 1–2 seconds has not been verified. The repo has no hosted deployment.
+
 ## Local setup
 
 Use Node.js 22 and npm. In this folder, copy `.env.example` to `.env.local` and fill it locally. Obtain `GNANI_API_KEY` from the Gnani API console, `GEMINI_API_KEY` from Google AI Studio, and `DATABASE_URL` from a Supabase Postgres project's Connect panel. For Google sign-in, create a Google Cloud OAuth Web client, enable Google Calendar, Tasks and Gmail APIs, then add `https://www.googleapis.com/auth/calendar.events`, `https://www.googleapis.com/auth/tasks` and `https://www.googleapis.com/auth/gmail.send` in Google Auth Platform → Data access. Add your test account under Audience and put the client ID/secret in `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET`. Users must re-consent after a scope is added. Then run:

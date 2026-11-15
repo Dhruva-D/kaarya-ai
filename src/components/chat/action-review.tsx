@@ -41,6 +41,7 @@ export function ActionReview({ plan, busy, creating, onApprove, onReject }: {
         <div><dt className="font-medium text-[#5A6664]">Guests</dt><dd className="mt-1 break-all">{plan.action.args.attendees?.length ? `${plan.action.args.attendees.join(", ")} — Google Calendar will email invitations` : "None; no invitations will be sent"}</dd></div>
         <div><dt className="font-medium text-[#5A6664]">Google Meet</dt><dd className="mt-1">{plan.action.args.addMeet ? "Request a new link" : "No Meet link"}</dd></div>
       </dl>
+      {pending && <p className="mt-4 text-xs leading-5 text-[#5A6664]">Need a change? Type a correction below. Kaarya will replace this preview before you approve.</p>}
       {pending && <div className="mt-5 flex flex-wrap gap-3">
         <button className="min-h-11 rounded-[10px] bg-[#166B61] px-4 text-sm font-semibold text-white hover:bg-[#10564F] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#166B61] disabled:opacity-50" disabled={busy} onClick={onApprove} type="button">{creating ? "Creating event…" : "Approve and create"}</button>
         <button className="min-h-11 rounded-[10px] border border-[#CBD6D2] px-4 text-sm font-medium hover:bg-[#F6F6F3] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#166B61] disabled:opacity-50" disabled={busy} onClick={onReject} type="button">Cancel</button>

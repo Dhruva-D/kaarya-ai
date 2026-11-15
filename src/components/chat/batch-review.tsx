@@ -49,6 +49,7 @@ export function BatchReview({ plan, busy, creating, onApprove, onReject, senderE
         {!pending && item.receipt.status === "unknown" && <p className="mt-2 text-xs leading-5 text-[#8E392F]">Check {info.service} before making another request.</p>}
       </li>;
     })}</ol>
+    {pending && <p className="mt-4 text-xs leading-5 text-[#5A6664]">Need a change? Type a correction below. Kaarya will replace this preview before you approve.</p>}
     {pending && <div className="mt-5 flex flex-wrap gap-3"><button className="min-h-11 rounded-[10px] bg-[#166B61] px-4 text-sm font-semibold text-white hover:bg-[#10564F] disabled:opacity-50" disabled={busy || missingSender} onClick={onApprove} type="button">{creating ? "Carrying out actions…" : "Approve both actions"}</button><button className="min-h-11 rounded-[10px] border border-[#CBD6D2] px-4 text-sm font-medium hover:bg-[#F6F6F3] disabled:opacity-50" disabled={busy} onClick={onReject} type="button">Cancel both</button></div>}
     {expired && <p className="mt-5 text-sm leading-6 text-[#5A6664]">This preview can no longer be approved. Send a new request to continue.</p>}
   </section>;

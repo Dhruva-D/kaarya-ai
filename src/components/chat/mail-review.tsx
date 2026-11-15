@@ -27,6 +27,7 @@ export function MailReview({ plan, busy, creating, onApprove, onReject, senderEm
         <div><dt className="font-medium text-[#5A6664]">Subject</dt><dd className="mt-1 break-words">{plan.action.args.subject}</dd></div>
         <div><dt className="font-medium text-[#5A6664]">Message</dt><dd className="mt-1 max-h-64 overflow-y-auto whitespace-pre-wrap break-words rounded-[10px] bg-[#F6F6F3] p-3">{plan.action.args.body}</dd></div>
       </dl>
+      {pending && <p className="mt-4 text-xs leading-5 text-[#5A6664]">Need a change? Type a correction below. Kaarya will replace this preview before you approve.</p>}
       {pending && <div className="mt-5 flex flex-wrap gap-3"><button className="min-h-11 rounded-[10px] bg-[#166B61] px-4 text-sm font-semibold text-white disabled:opacity-50" disabled={busy || !senderEmail} onClick={onApprove} type="button">{creating ? "Sending email…" : "Approve and send"}</button><button className="min-h-11 rounded-[10px] border border-[#CBD6D2] px-4 text-sm font-medium disabled:opacity-50" disabled={busy} onClick={onReject} type="button">Cancel</button></div>}
       {plan.status === "succeeded" && plan.receipt.providerObjectId && <div className="mt-5 text-sm text-[#246B4B]"><p className="font-semibold">Gmail accepted the message</p><p className="mt-1 break-all">Gmail message ID: {plan.receipt.providerObjectId}</p></div>}
       {plan.status === "unknown" && <p className="mt-5 rounded-[10px] border border-[#E3D2B5] bg-[#FFF9EE] p-3 text-sm">Gmail may have sent this email. Check Sent before trying again.</p>}
