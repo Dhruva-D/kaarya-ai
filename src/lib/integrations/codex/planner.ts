@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { proposalSchema, providerProposalSchema, type Proposal } from "../../agent/proposal";
 
+const codexOutputSchema = { type: "object", properties: { proposalJson: { type: "string" } }, required: ["proposalJson"], additionalProperties: false } as const;
+
 export class CodexProposalError extends Error {
   constructor(public readonly reason: "model_unavailable" | "cli_unavailable" | "timeout" | "invalid_response") {
     super(`Codex proposal ${reason}`);
@@ -24,16 +26,22 @@ export async function proposeWithCodex(input: PlannerInput): Promise<{ proposal:
   const directory = await mkdtemp(join(tmpdir(), "kaarya-codex-"));
   try {
     const schemaPath = join(directory, "proposal.schema.json");
-    await writeFile(schemaPath, JSON.stringify(providerProposalSchema));
+    await writeFile(schemaPath, JSON.stringify(codexOutputSchema));
     const prompt = [
-      "You are Kaarya's JSON proposal parser. Return only one JSON object matching the provided schema. Do not call tools or inspect files. Never claim an external action has executed.",
+      "You are Kaarya's proposal parser. Return an object with one field proposalJson containing a JSON-encoded proposal. The encoded proposal must have exactly kind, assistantMessage, questions, actions. Do not call tools or inspect files. Never claim an external action has executed.",
       "Propose at most two actions in user order using only calendar.create_event, tasks.create_task, or gmail.send. Ask a concise question when required details are missing. Never invent recipients, people, or dates.",
       "Calendar needs user-specified title, start, end, duration, guest decision and Meet decision. Use absolute ISO times with offset. Tasks have a due date only, no timed reminder. Gmail needs the exact user-supplied recipient, subject and body. Reply in the requested language.",
+      "The proposalJson string must encode exactly this proposal shape. kind is action_plan, needs_clarification, or unsupported; questions is an array of plain strings, never objects. If kind is needs_clarification or unsupported, actions must be empty. If kind is action_plan, actions must contain one or two items.",
+      `Proposal shape: ${JSON.stringify(providerProposalSchema)}`,
       `Request data: ${JSON.stringify({ nowIso: input.nowIso, timezone: input.timezone, languageCode: input.languageCode ?? "en-IN", recentTurns: input.recentTurns ?? [], pendingAction: input.pendingAction ?? null, text: input.text })}`,
     ].join("\n");
     const output = await runCodex(directory, schemaPath, prompt);
     let decoded: unknown;
-    try { decoded = JSON.parse(output); } catch { throw new CodexProposalError("invalid_response"); }
+    try {
+      const wrapper = JSON.parse(output) as { proposalJson?: unknown };
+      if (typeof wrapper.proposalJson !== "string") throw new Error("Missing proposal");
+      decoded = JSON.parse(wrapper.proposalJson);
+    } catch { throw new CodexProposalError("invalid_response"); }
     const result = proposalSchema.safeParse(decoded);
     if (!result.success) throw new CodexProposalError("invalid_response");
     return { proposal: result.data, model: "codex:gpt-5.6-luna" };
