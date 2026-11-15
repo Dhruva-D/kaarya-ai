@@ -55,6 +55,15 @@ describe("Gemini proposal adapter", () => {
     await expect(proposeAction(input, { apiKey: "test-key", createInteraction: response([action, task, task]) })).rejects.toMatchObject({ reason: "invalid_response" });
   });
 
+  it("drops malformed guest candidates before strict validation while preserving all other checks", async () => {
+    const badGuest = { ...action, args: { ...action.args, attendees: ["unknown guest"], addMeet: true } };
+    const createInteraction = async () => ({ status: "completed", output_text: JSON.stringify({ kind: "action_plan", assistantMessage: "Review", questions: [], actions: [badGuest] }) });
+    const result = await proposeAction(input, { apiKey: "test-key", createInteraction });
+    expect(result.proposal.actions[0]).toMatchObject({ tool: "calendar.create_event", args: { attendees: [], addMeet: true } });
+    const unsafe = async () => ({ status: "completed", output_text: JSON.stringify({ kind: "action_plan", assistantMessage: "Review", questions: [], actions: [{ ...badGuest, args: { ...badGuest.args, hidden: "execute" } }] }) });
+    await expect(proposeAction(input, { apiKey: "test-key", createInteraction: unsafe })).rejects.toMatchObject({ reason: "invalid_response" });
+  });
+
   it("rejects missing questions, reversed times and incomplete responses", async () => {
     const clarification = async () => ({ status: "completed", output_text: JSON.stringify({ kind: "needs_clarification", assistantMessage: "When?", questions: [], actions: [] }) });
     await expect(proposeAction(input, { apiKey: "test-key", createInteraction: clarification })).rejects.toMatchObject({ reason: "invalid_response" });

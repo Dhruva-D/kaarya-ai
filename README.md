@@ -6,7 +6,7 @@ Kaarya AI is a voice-first, human-approved productivity assistant. Phase 1 turns
 
 - Next.js, TypeScript, Tailwind CSS and shadcn/ui foundation: scaffolded and checked locally.
 - Gnani Prisma v3.0 browser recorder, WAV encoder, authenticated transcription route and editable transcript: `indic-auto` detects one of ten supported languages. A synthetic clip returned a real v3.0 transcript and detected language; the user also reported an editable Kannada browser transcript. Typed fallback remains available.
-- Gemini structured proposal adapter: strict Zod contract tests and real `gemini-3.6-flash` proposals verified. `gemini-3.5-flash-lite` is now the local default because direct synthetic requests were faster and the 3.6 free-tier quota was exhausted. A configured 3.6 model falls back to Lite on 429/503. Provider latency remains variable; one signed-in request failed after 28 seconds and its retry took 12.4 seconds for chat, plus 1.9 seconds for TTS.
+- Reasoning model selector: chats default to a local Codex CLI attempt using `gpt-6-luna` with low reasoning effort and requested priority service tier, then fall back to Gemini 3.5 Flash-Lite if Codex is unavailable. Gemini 3.5 Lite and 3.6 Flash are also selectable. The reply shows the model that actually answered. **Current account limitation:** Codex CLI v0.149.1 returned `model_not_found` for GPT-6 Luna with this ChatGPT account on 15 Nov 2026; default requests therefore fall back to Gemini. Luna is not working until account access changes. Fast/priority tier was requested but not proven active. Gemini quota may also be exhausted.
 - Drizzle/Postgres schema and checked-in migrations: applied to a Supabase test database.
 - Auth.js Google sign-in and encrypted token vault: live sign-in verified; account token columns were empty and connection tokens encrypted at rest.
 - Authenticated typed chat route and owned Calendar plan persistence: live typed request and review verified. Recent completed actions remain visible when a newer plan is pending in the same conversation.
@@ -31,9 +31,11 @@ This is a locally verified Phase 1 slice, not a deployed service. Full cross-use
 4. Try a date-only Task and a Gmail draft to an account you control. Inspect the task date and the Gmail **From**, **To**, subject and full body. Approve only if you intend the real Google write.
 5. Try one request for a Calendar event **and** a Task. Review both cards. The two-action execution code has automated tests, but a live batch write has not been verified because the user declined that test.
 
-The app uses real provider calls. Gemini quota, Gnani credits, Google consent and network speed can affect a test. A complete spoken turn in 1–2 seconds has not been verified. The repo has no hosted deployment.
+The app uses real provider calls. Codex model access, Gemini quota, Gnani credits, Google consent and network speed can affect a test. A complete spoken turn in 1–2 seconds has not been verified. The repo has no hosted deployment.
 
 ## Local setup
+
+The Codex CLI is a local development option. Install and sign in to `codex`, then check `codex --version`. It receives only the bounded conversation context, runs in a temporary read-only working directory, and inherits no Kaarya provider secrets. Set `CODEX_CLI_ENABLED=false` to skip it. Production disables the CLI unless a trusted private host explicitly sets `CODEX_CLI_ENABLED=true`; this is not a general hosted web backend. ChatGPT subscription model access and Fast tier availability must be verified separately. The model dropdown never changes the strict server validation or approval gate.
 
 Use Node.js 22 and npm. In this folder, copy `.env.example` to `.env.local` and fill it locally. Obtain `GNANI_API_KEY` from the Gnani API console, `GEMINI_API_KEY` from Google AI Studio, and `DATABASE_URL` from a Supabase Postgres project's Connect panel. For Google sign-in, create a Google Cloud OAuth Web client, enable Google Calendar, Tasks and Gmail APIs, then add `https://www.googleapis.com/auth/calendar.events`, `https://www.googleapis.com/auth/tasks` and `https://www.googleapis.com/auth/gmail.send` in Google Auth Platform → Data access. Add your test account under Audience and put the client ID/secret in `AUTH_GOOGLE_ID`/`AUTH_GOOGLE_SECRET`. Users must re-consent after a scope is added. Then run:
 

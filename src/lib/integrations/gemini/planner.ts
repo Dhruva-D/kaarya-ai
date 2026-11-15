@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { z } from "zod";
 import { proposalSchema, providerProposalSchema, type Proposal } from "../../agent/proposal";
 
 type InteractionResult = { status: string; output_text?: string; model?: string };
@@ -83,15 +84,45 @@ export async function proposeAction(
     result = await createForModel(selectedModel);
   }
   if (result.status !== "completed" || !result.output_text) {
+    console.warn("Gemini proposal unusable", { stage: "provider_status", status: result.status, hasOutput: Boolean(result.output_text) });
     throw new GeminiProposalError("invalid_response");
   }
   let parsed: unknown;
   try {
     parsed = JSON.parse(result.output_text);
   } catch {
+    console.warn("Gemini proposal unusable", { stage: "json_parse", outputLength: result.output_text.length });
     throw new GeminiProposalError("invalid_response");
   }
-  const proposal = proposalSchema.safeParse(parsed);
-  if (!proposal.success) throw new GeminiProposalError("invalid_response");
+  // Gemini sometimes returns malformed guest candidates even with a JSON schema.
+  // Discard only those candidates; the chat service still checks exact user-supplied
+  // addresses and explicit guest decisions before it can show an approval plan.
+  const normalized = removeMalformedGuestCandidates(parsed);
+  const proposal = proposalSchema.safeParse(normalized);
+  if (!proposal.success) {
+    console.warn("Gemini proposal unusable", { stage: "schema", issues: proposal.error.issues.map((issue) => ({ path: issue.path.join("."), code: issue.code })) });
+    throw new GeminiProposalError("invalid_response");
+  }
   return { proposal: proposal.data, model: result.model ?? selectedModel };
+}
+
+function removeMalformedGuestCandidates(value: unknown): unknown {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
+  const source = value as Record<string, unknown>;
+  if (!Array.isArray(source.actions)) return value;
+  const address = z.email().max(320);
+  let changed = false;
+  const actions = source.actions.map((action: unknown) => {
+    if (!action || typeof action !== "object" || Array.isArray(action)) return action;
+    const candidate = action as Record<string, unknown>;
+    if (candidate.tool !== "calendar.create_event" || !candidate.args || typeof candidate.args !== "object" || Array.isArray(candidate.args)) return action;
+    const args = candidate.args as Record<string, unknown>;
+    if (!Array.isArray(args.attendees)) return action;
+    const attendees = args.attendees.filter((entry: unknown) => address.safeParse(entry).success);
+    if (attendees.length === args.attendees.length) return action;
+    changed = true;
+    return { ...candidate, args: { ...args, attendees } };
+  });
+  if (changed) console.warn("Gemini proposal discarded malformed guest candidates", { count: source.actions.length });
+  return changed ? { ...source, actions } : value;
 }

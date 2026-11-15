@@ -20,6 +20,8 @@ export function Workspace({ signOutControl, voiceAvailable, senderEmail }: { sig
   const [autoSpeakId, setAutoSpeakId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [reasoningModel, setReasoningModel] = useState<"codex-gpt-6-luna" | "gemini-3.5-flash-lite" | "gemini-3.6-flash">("codex-gpt-6-luna");
+  const [modelStatus, setModelStatus] = useState<string | null>(null);
 
   const loadDetail = useCallback(async (id: string) => {
     const response = await fetch(`/api/conversations/${id}`, { cache: "no-store" });
@@ -71,10 +73,11 @@ export function Workspace({ signOutControl, voiceAvailable, senderEmail }: { sig
     try {
       const response = await fetch("/api/chat", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ conversationId: activeId ?? undefined, text, inputMode: languageCode ? "voice" : "text", languageCode, clientRequestId: crypto.randomUUID() }),
+        body: JSON.stringify({ conversationId: activeId ?? undefined, text, inputMode: languageCode ? "voice" : "text", languageCode, reasoningModel, clientRequestId: crypto.randomUUID() }),
       });
       if (!response.ok) throw new Error(await readApiError(response));
-      const result = await response.json() as { conversationId: string };
+      const result = await response.json() as { conversationId: string; model: string; fallbackReason?: string };
+      setModelStatus(result.fallbackReason ? `Codex unavailable (${result.fallbackReason}); answered by ${result.model}.` : `Answered by ${result.model}.`);
       setActiveId(result.conversationId);
       const loaded = await loadDetail(result.conversationId);
       const latest = loaded.messages.at(-1);
@@ -136,7 +139,7 @@ export function Workspace({ signOutControl, voiceAvailable, senderEmail }: { sig
         <div className="mx-auto flex w-full max-w-[780px] flex-1 flex-col">
           {loading ? <p className="pt-12 text-sm text-[#5A6664]" role="status">Loading your workspace…</p> : detail?.messages.length ? <div className="flex-1 py-10"><MessageList autoSpeakId={autoSpeakId} busy={busy && !decisionBusy} messages={detail.messages} voiceAvailable={voiceAvailable} /></div> : <div className="flex flex-1 flex-col justify-center py-12"><p className="text-sm font-semibold text-[#166B61]">YOUR WORKSPACE</p><h1 className="mt-4 max-w-lg text-3xl font-semibold tracking-tight sm:text-4xl">What would you like to get done?</h1><p className="mt-4 max-w-xl text-[15px] leading-7 text-[#5A6664]">Describe a meeting or task. I’ll ask for missing details and show the exact action before you decide whether to create it.</p></div>}
           {error && <div className="mb-4 rounded-[10px] border border-[#E4C9C4] bg-[#FFF7F5] px-4 py-3 text-sm text-[#8E392F]" role="alert">{error}</div>}
-          <div className="sticky bottom-0 bg-[#F6F6F3] pb-2 pt-3"><Composer disabled={busy || loading} onSend={send} voiceAvailable={voiceAvailable} /><p className="mt-3 text-xs leading-5 text-[#5A6664]">{voiceAvailable ? "Review and edit the transcript before sending. Voice is processed only when you press Record." : "Voice input is unavailable right now. You can type your request above."}</p></div>
+          <div className="sticky bottom-0 bg-[#F6F6F3] pb-2 pt-3"><div className="mb-3 flex flex-wrap items-center gap-2"><label className="text-xs font-medium text-[#5A6664]" htmlFor="reasoning-model">Reasoning model</label><select className="min-h-10 rounded-[10px] border border-[#CBD6D2] bg-white px-3 text-sm text-[#263634]" disabled={busy || loading} id="reasoning-model" onChange={(event) => { setReasoningModel(event.target.value as typeof reasoningModel); setModelStatus(null); }} value={reasoningModel}><option value="codex-gpt-6-luna">Codex · GPT-6 Luna (Gemini fallback)</option><option value="gemini-3.5-flash-lite">Gemini · 3.5 Flash-Lite</option><option value="gemini-3.6-flash">Gemini · 3.6 Flash</option></select></div><Composer disabled={busy || loading} onSend={send} voiceAvailable={voiceAvailable} />{modelStatus && <p className="mt-2 text-xs text-[#5A6664]" role="status">{modelStatus}</p>}<p className="mt-3 text-xs leading-5 text-[#5A6664]">{voiceAvailable ? "Review and edit the transcript before sending. Voice is processed only when you press Record." : "Voice input is unavailable right now. You can type your request above."}</p></div>
         </div>
       </section>
 

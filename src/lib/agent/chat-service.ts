@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
 import { getDb } from "../db/client";
 import { actionPlans, actions, conversations, messages, profiles } from "../db/schema";
-import { proposeAction } from "../integrations/gemini/planner";
+import { proposeWithFallback } from "./reasoning-router";
 import { canonicalPlanHash, validateCalendarProposal, type ProposedAction } from "./plan";
 import type { ChatRequest } from "./chat-request";
 import { replyCopy } from "./reply-copy";
@@ -33,13 +33,13 @@ export async function handleChat(userId: string, request: ChatRequest) {
     .orderBy(desc(actionPlans.createdAt)).limit(1) : [];
   const pendingActions = pendingPlan ? await db.select({ type: actions.type, args: actions.argumentsJson }).from(actions)
     .where(and(eq(actions.planId, pendingPlan.id), eq(actions.userId, userId))).orderBy(actions.sequenceNo).limit(2) : [];
-  const { proposal, model } = await proposeAction(
+  const { proposal, model, fallbackReason } = await proposeWithFallback(
     {
       text: request.text, timezone, nowIso: new Date().toISOString(), languageCode: request.languageCode,
       recentTurns: recent.reverse().map((turn) => ({ role: turn.role, content: turn.content.slice(0, 1_000) })),
       pendingAction: pendingActions.length ? pendingActions.map((item) => ({ tool: item.type, args: item.args })) : undefined,
     },
-    { apiKey: process.env.GEMINI_API_KEY ?? "", model: process.env.GEMINI_MODEL },
+    { selected: request.reasoningModel },
   );
   let proposed = proposal.kind === "action_plan" ? proposal.actions : [];
   const userTurns = [...recent.filter((turn) => turn.role === "user").map((turn) => turn.content), request.text];
@@ -103,5 +103,7 @@ export async function handleChat(userId: string, request: ChatRequest) {
     resultType: missingDetails.length || missingTask.length || missingPreferences || missingRecipient ? "needs_clarification" : proposal.kind,
     questions: missingDetails.length || missingTask.length || missingPreferences || missingRecipient ? [assistantText] : proposal.questions,
     plan: proposed.length && planId && canonicalHash ? { id: planId, version: 1, canonicalHash, actions: proposed } : null,
+    model,
+    fallbackReason,
   };
 }
